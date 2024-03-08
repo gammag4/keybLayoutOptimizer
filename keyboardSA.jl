@@ -1,4 +1,5 @@
 # ### SETUP ###
+
 # ~~~ libraries ~~~
 import Pkg
 Pkg.activate(@__DIR__)
@@ -452,20 +453,12 @@ const keyMapDict = Dict(
 const handList = [1, 1, 1, 1, 2, 2, 2, 2] # what finger is with which hand
 
 # ### KEYBOARD FUNCTIONS ###
-function createGenome()
-    # setup
-    myGenome = shuffle(rng, letterList)
-
-    # return
-    return myGenome
-end
 
 function drawKeyboard(myGenome, id, currentLayoutMap)
     plot()
     namedColours = ["yellow", "blue", "green", "orange", "pink", "green", "blue", "yellow"]
 
-    for i in 1:46
-        letter = myGenome[i]
+    for (i, letter) in enumerate(myGenome)
         x, y, row, finger, home = currentLayoutMap[i]
         # myColour = namedColours[finger]
 
@@ -515,6 +508,7 @@ function countCharacters()
 end
 
 # ### SAVE SCORE ###
+
 function appendUpdates(updateLine)
     file = open("result/iterationScores.txt", "a")
     write(file, updateLine, "\n")
@@ -522,6 +516,7 @@ function appendUpdates(updateLine)
 end
 
 # ### OBJECTIVE FUNCTIONS ###
+
 function determineKeypress(currentCharacter)
     # setup
     keyPress = nothing
@@ -598,7 +593,7 @@ function doKeypress(myFingerList, myGenome, keyPress, oldFinger, oldHand, curren
     return myFingerList, oldFinger, oldHand
 end
 
-function objectiveFunction(file, myGenome, currentLayoutMap)
+function baselineObjectiveFunction(file, myGenome, currentLayoutMap)
     # setup
     objective = 0
    
@@ -628,52 +623,18 @@ function objectiveFunction(file, myGenome, currentLayoutMap)
         end
     end
 
-    # calculate objective
+    # calculate and return objective
     objective = sum(myFingerList[:, 6])
-    objective = (objective / QWERTYscore - 1) * 100
-
-    # return
     return objective
 end
 
-function baselineObjectiveFunction(file, myGenome, currentLayoutMap) # same as previous but for getting QWERTY baseline
-    # setup
-    objective = 0
-   
-    # ~ create hand ~
-    myFingerList = zeros(8, 6) # (homeX, homeY, currentX, currentY, distanceCounter, objectiveCounter)
-
-    for i in 1:46
-        x, y, _, finger, home = currentLayoutMap[i]
-
-        if home == 1.0
-            myFingerList[finger, 1:4] = [x, y, x, y]
-        end
-    end
-    
-    oldFinger = 0
-    oldHand = 0
-
-    for currentCharacter in file
-        # determine keypress
-        keyPress = determineKeypress(currentCharacter)
-
-        # do keypress
-        if keyPress !== nothing
-            myFingerList, oldFinger, oldHand = doKeypress(myFingerList, myGenome, keyPress, oldFinger, oldHand,
-                                                          currentLayoutMap)
-        end
-    end
-
-    # calculate objective
-    objective = sum(myFingerList[:, 6])
-    objective = objective
-
-    # return
+function objectiveFunction(file, myGenome, currentLayoutMap, baselineScore)
+    objective = (baselineObjectiveFunction(file, myGenome, currentLayoutMap) / baselineScore - 1) * 100
     return objective
 end
 
 # ### SA OPTIMISER ###
+
 function shuffleGenome(currentGenome, temperature)
     # setup
     noSwitches = Int(maximum([2, minimum([floor(temperature/100), 46])]))
@@ -697,13 +658,16 @@ function shuffleGenome(currentGenome, temperature)
 end
 
 
+# TODO Run multiple times to create many different keyboard layouts, compare them and get the best
 function runSA(
     layoutMap = traditionalLayoutMap;
     baselineLayout = QWERTYgenome,
-    temperature = 500,
+    genomeGenerator = () -> shuffle(rng, letterList),
+    #genomeGenerator = () -> QWERTYgenome,
+    temperature = 500, # TODO 1000
     epoch = 20,
-    coolingRate = 0.99,
-    num_iterations = 25000,
+    coolingRate = 0.99, # TODO 0.9999
+    num_iterations = 25000, # TODO 500000
     save_current_best = :plot,
     verbose = true,
 )
@@ -713,8 +677,8 @@ function runSA(
     verbose && println("Running code...")
     # baseline
     verbose && print("Calculating raw baseline: ")
-    global QWERTYscore = baselineObjectiveFunction(file, baselineLayout, currentLayoutMap) # yes its a global, fight me
-    verbose && println(QWERTYscore)
+    baselineScore = baselineObjectiveFunction(file, baselineLayout, currentLayoutMap) # ok me fixeded
+    verbose && println(baselineScore)
 
     verbose && println("From here everything is reletive with + % worse and - % better than this baseline \n Note that best layout is being saved as a png at each step. Kill program when satisfied.")
 
@@ -722,8 +686,8 @@ function runSA(
 
 
     # setup
-    currentGenome = createGenome()
-    currentObjective = objectiveFunction(file, currentGenome, currentLayoutMap)
+    currentGenome = genomeGenerator()
+    currentObjective = objectiveFunction(file, currentGenome, currentLayoutMap, baselineScore)
 
     bestGenome = currentGenome
     bestObjective = currentObjective
@@ -739,7 +703,7 @@ function runSA(
         newGenome = shuffleGenome(currentGenome, 2)
 
         # ~ asess ~
-        newObjective = objectiveFunction(file, newGenome, currentLayoutMap)
+        newObjective = objectiveFunction(file, newGenome, currentLayoutMap, baselineScore)
         delta = newObjective - currentObjective
 
         verbose && println(round(temperature, digits = 2), "\t", round(bestObjective, digits=2), "\t", round(newObjective, digits=2))
@@ -806,5 +770,6 @@ end
 
 
 # ### RUN ###
+
 Random.seed!(rng, seed)
 @time runSA()
