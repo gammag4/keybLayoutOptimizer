@@ -9,6 +9,8 @@ using Base.Threads
 using BenchmarkTools
 using Statistics
 
+using Revise
+
 
 # ~~~ rng ~~~
 seed = 123456
