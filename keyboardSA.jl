@@ -15,7 +15,7 @@ seed = 123456
 const rng = StableRNGs.LehmerRNG(seed)
 
 # ~~~ data ~~~
-bookPath = "myBook.txt"
+bookPath = "result/_dataset.txt"
 
 # ~~~ weights ~~~
 const distanceEffort = 1 # at 2 distance penalty is squared
@@ -488,7 +488,7 @@ function drawKeyboard(myGenome, id, currentLayoutMap)
     end
     
     plot!(aspect_ratio = 1, legend = false)
-    savefig("$id.png")
+    savefig("result/$id.png")
 
 end
 
@@ -514,7 +514,7 @@ end
 
 # ### SAVE SCORE ###
 function appendUpdates(updateLine)
-    file = open("iterationScores.txt", "a")
+    file = open("result/iterationScores.txt", "a")
     write(file, updateLine, "\n")
     close(file)
 end
