@@ -1,3 +1,5 @@
+module DatasetGenerator
+
 using PyCall
 
 # No mimetype library in Julia (???)
@@ -18,9 +20,8 @@ function processDatasetFolder(path)
             fpath = joinpath(root, file)
             mime = py"get_mime"(fpath)
             if mime != nothing && Base.Multimedia.istextmime(mime)
-                open(fpath, "r") do f
-                    push!(contents, read(f, String) * "\n\n")
-                end
+                fcont = open(f -> read(f, String), fpath, "r")
+                push!(contents, fcont * "\n\n")
             end
         end
     end
@@ -35,15 +36,18 @@ function processDataFolderIntoTextFile(srcfolder, destfile, overwrite=false)
 
     dataset = processDatasetFolder(srcfolder)
 
+    open(f -> write(f, dataset), destfile, "w")
+
     # TODO instead of removing links, put shortcuts for ctrl+c and ctrl+v
     # TODO map all data into shortcuts
     # Remove links, since we normally copy paste them instead of writing them
     urlregex = r"(http(s)?:\/\/.)(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)"
     dataset = replace(dataset, urlregex => "")
+    dataset = strip(dataset)
 
-    open(destfile, "w") do f
-        write(f, dataset)
-    end
+    open(f -> write(f, dataset), destfile, "w")
 end
 
-processDataFolderIntoTextFile("data/raw_dataset", "data/dataset.txt", false)
+export processDataFolderIntoTextFile
+
+end
