@@ -4,69 +4,72 @@ import Pkg
 Pkg.activate(@__DIR__)
 Pkg.instantiate()
 using Plots
+using Colors
 using Random, StableRNGs
 using Base.Threads
 using BenchmarkTools
-using Statistics
 using Revise
 
-using DatasetGenerator
 using Presets
+using DataStats
+using DataProcessing
+
+# TODO Put code after functions and remove globals
+
+textpath = "data/dataset.txt" # File to save/get text data
+kbResultsFilePath = "data/result/iterationScores.txt" # File to save keyboard results data
 
 # Processing data
 mkpath("data/result")
-processDataFolderIntoTextFile("data/raw_dataset", "data/dataset.txt", false)
+processDataFolderIntoTextFile("data/raw_dataset", textpath, overwrite=false, verbose=true)
 
+# Getting data
+textdata = open(io -> read(io, String), textpath, "r")
 
 # OLD CODE
 
-function computeEffort(arrCPM)
-    m = mean(arrCPM)
-    st = std(arrCPM)
-    nzScore = -(arrCPM .- m) ./ st # negative since higher is better
-    effort = nzScore .- minimum(nzScore)
-    return effort
-end
-
-const fingersCPS = [5.5, 5.9, 6.3, 6.2, 6.4, 5.3, 7.0, 6.7, 5.2, 6.2] # How many clicks can you do in a minute
-const rowsCPS = [4.1, 5.0, 5.4, 4.7, 5.0] # How many clicks can you do in a minute in each row
-
-const fingerEffort = computeEffort(fingersCPS)
-const rowEffort = computeEffort(rowsCPS)
-
+const (; fingerEffort, rowEffort, textStats, effortWeighting) = computeStats(
+    text=textdata,
+    fingersCPS=[5.5, 5.9, 6.3, 6.2, 6.4, 5.3, 7.0, 6.7, 5.2, 6.2], # How many clicks can you do in a minute
+    rowsCPS=[4.1, 5.0, 5.4, 4.7, 5.0], # How many clicks can you do in a minute in each row
+    effortWeighting=(0.7917, 1, 0, 0.4773, 0.00), # dist, finger, row. Also had room for other weightings but removed for simplicity
+)
+const (; charHistogram, charFrequency, usedChars) = textStats
 
 const distanceEffort = 1 # at 2 distance penalty is squared
 const doubleFingerEffort = 1
 const doubleHandEffort = -1
 
-const effortWeighting = (0.7917, 1, 0, 0.4773, 0.00) # dist, finger, row. Also had room for other weightings but removed for simplicity
+# Hue goes from 170 (min f) to 0 (max f)
+# Saturation is the normalized frequency of each key
+const normFreqToHSV = f -> HSV((1.0 - f) * 170, f * 0.7 + 0.3, 1.0)
+
+function computeKeyboardColorMap(charFrequency)
+    charFrequency = filter(((k, v),) -> !isspace(k), charFrequency)
+    # Normalizes char frequency
+    maxf = maximum(values(charFrequency))
+    minf = minimum(values(charFrequency))
+
+    return Dict(k => normFreqToHSV((v - minf) / (maxf - minf)) for (k, v) in charFrequency)
+end
+
+const keyboardColorMap = computeKeyboardColorMap(charFrequency)
 
 function drawKeyboard(myGenome, id, currentLayoutMap)
     plot()
-    namedColours = ["yellow", "blue", "green", "orange", "pink", "green", "blue", "yellow"]
 
     for i in 1:46
         letter = myGenome[i]
+
         x, y, row, finger, home = currentLayoutMap[i]
-        # myColour = namedColours[finger]
+        color = keyboardColorMap[lowercase(letter)]
 
-        myColour = "gray69"
-        if letter in ["E"]
-            myColour = "cyan"
-        elseif letter in ["T", "A", "O", "I", "N", "S", "R", "H", "L"]
-            myColour = "springgreen2"
-            #elseif letter in ["D", "H", "L", "M", "U", "W", "Y"]
-            #    myColour = "darkgreen" 
-        elseif letter in ["[", "]", "~", "+", "7", "4", "6", "3", "8", "5"]
-            myColour = "tomato"
-        end
+        plot!([x], [y], shape=:rect, fillalpha=0.2, linecolor=nothing, color=HSVA(color, 0.5), label="", markersize=16.5, dpi=100)
 
-        if home == 1.0
-            plot!([x], [y], shape=:rect, fillalpha=0.2, linecolor=nothing, color=myColour, label="", markersize=16.5, dpi=100)
-        end
+        # Draws four lines using their points (that's why there is 5 xs and ys)
+        plot!([x - 0.45, x + 0.45, x + 0.45, x - 0.45, x - 0.45], [y - 0.45, y - 0.45, y + 0.45, y + 0.45, y - 0.45], color=HSV(0, 0, 0), fillalpha=0.2, label="", dpi=100)
 
-        plot!([x - 0.45, x + 0.45, x + 0.45, x - 0.45, x - 0.45], [y - 0.45, y - 0.45, y + 0.45, y + 0.45, y - 0.45], color=Colors.HSV(0, 1.0, 1.0), fillalpha=0.2, label="", dpi=100)
-
+        # Draws character
         annotate!(x, y, text(letter, :black, :center, 10))
     end
 
@@ -74,8 +77,8 @@ function drawKeyboard(myGenome, id, currentLayoutMap)
     savefig("data/result/$id.png")
 end
 
-function appendUpdates(updateLine)
-    open(f -> write(f, updateLine, "\n"), "data/result/iterationScores.txt", "a")
+function appendUpdates(updateLine, kbResultsFilePath)
+    open(f -> write(f, updateLine, "\n"), kbResultsFilePath, "a")
 end
 
 function determineKeypress(currentCharacter)
@@ -218,11 +221,11 @@ end
 
 function runSA(;
     rng,
-    datapath,
+    text,
     layoutMap,
     baselineLayout,
     genomeGenerator,
-    #genomeGenerator,
+    kbResultsFilePath,
     temperature,
     epoch,
     coolingRate,
@@ -231,12 +234,11 @@ function runSA(;
     verbose,
 )
     currentLayoutMap = layoutMap
-    data = open(io -> read(io, String), datapath, "r")
 
     verbose && println("Running code...")
     # baseline
     verbose && print("Calculating raw baseline: ")
-    baselineScore = baselineObjectiveFunction(data, baselineLayout, currentLayoutMap) # ok me fixeded
+    baselineScore = baselineObjectiveFunction(text, baselineLayout, currentLayoutMap) # ok me fixeded
     verbose && println(baselineScore)
 
     verbose && println("From here everything is reletive with + % worse and - % better than this baseline \n Note that best layout is being saved as a png at each step. Kill program when satisfied.")
@@ -246,7 +248,7 @@ function runSA(;
 
     # setup
     currentGenome = genomeGenerator()
-    currentObjective = objectiveFunction(data, currentGenome, currentLayoutMap, baselineScore)
+    currentObjective = objectiveFunction(text, currentGenome, currentLayoutMap, baselineScore)
 
     bestGenome = currentGenome
     bestObjective = currentObjective
@@ -262,7 +264,7 @@ function runSA(;
         newGenome = shuffleGenome(rng, currentGenome, 2)
 
         # ~ asess ~
-        newObjective = objectiveFunction(data, newGenome, currentLayoutMap, baselineScore)
+        newObjective = objectiveFunction(text, newGenome, currentLayoutMap, baselineScore)
         delta = newObjective - currentObjective
 
         verbose && println(round(temperature, digits=2), "\t", round(bestObjective, digits=2), "\t", round(newObjective, digits=2))
@@ -273,7 +275,7 @@ function runSA(;
             currentObjective = newObjective
 
             updateLine = string(round(temperature, digits=2), ", ", iteration, ", ", round(bestObjective, digits=5), ", ", round(newObjective, digits=5))
-            appendUpdates(updateLine)
+            appendUpdates(updateLine, kbResultsFilePath)
 
             if newObjective < bestObjective
                 bestGenome = newGenome
@@ -331,11 +333,12 @@ const rng = StableRNGs.LehmerRNG(seed)
 # TODO Run multiple times to create many different keyboard layouts, compare them and get the best
 @time runSA(
     rng=rng,
-    datapath="data/dataset.txt",
+    text=textdata,
     layoutMap=defaultLayoutMap,
     baselineLayout=defaultGenome,
     genomeGenerator=() -> shuffle(rng, letterList),
     #genomeGenerator=() -> defaultGenome,
+    kbResultsFilePath=kbResultsFilePath,
     temperature=500, # TODO 1000
     epoch=20,
     coolingRate=0.99, # TODO 0.9999
