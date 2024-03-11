@@ -61,7 +61,6 @@ function mapSpecialCharacters(dataset)
     ks = collect("ç¿¡¥çæœ°º" * raw"!@#$%^&*()" * "~_+{}:\"|<>?“”\r")
     cs = collect(",?!-,zx;;" * raw"1234567890" * "`-=[];'\\,./\"\"\n")
     merge!(keyMap, Dict(ks[i] => string(cs[i]) for i in eachindex(ks)))
-    println(keyMap)
 
     return replace(dataset, keyMap...)
 end
