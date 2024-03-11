@@ -3,8 +3,6 @@ push!(LOAD_PATH, "src/")
 import Pkg
 Pkg.activate(@__DIR__)
 Pkg.instantiate()
-using Plots
-using Colors
 using Random, StableRNGs
 using Base.Threads
 using BenchmarkTools
@@ -14,6 +12,7 @@ using Presets
 using DataStats
 using DataProcessing
 using Genome
+using DrawKeyboard
 
 # TODO Put code after functions and remove globals
 
@@ -39,61 +38,6 @@ const distanceEffort = 1.2 # Always positive. At 2, distance penalty is squared
 const doubleFingerEffort = 1 # Positive prevents using same finger more than once
 const singleHandEffort = 1 # Positive prefers double hand, negative prefers single hand
 const rightHandEffort = 1 # Has to use the mouse
-
-# Hue goes from 170 (min f) to 0 (max f)
-# Saturation is the normalized frequency of each key
-normFreqToHSV(f) = HSV((1.0 - f) * 170, f * 0.7 + 0.3, 1.0)
-
-function computeKeyboardColorMap(charFrequency)
-    charFrequency = filter(((k, v),) -> !isspace(k), charFrequency)
-    # Normalizes char frequency
-    maxf = maximum(values(charFrequency))
-    minf = minimum(values(charFrequency))
-
-    return Dict(k => normFreqToHSV(log2(1 + (v - minf) / (maxf - minf))) for (k, v) in charFrequency)
-end
-
-const keyboardColorMap = computeKeyboardColorMap(charFrequency)
-
-function drawKey(key, letter)
-    (x, y, w), (finger, home), row = key
-    h = 1 # TODO Add h to layout
-    color = get(keyboardColorMap, lowercase(letter), HSV(220, 0.2, 1))
-    border = Shape((x - 0.5 * w) .+ [0, w, w, 0], (y - 0.5 * h) .+ [0, 0, h, h])
-    rect = Shape((x - 0.5 * w + 0.03) .+ ((w - 0.06) .* [0, 1, 1, 0]), (y - 0.5 * h + 0.03) .+ ((h - 0.06) .* [0, 0, 1, 1]))
-
-    plot!(border, fillalpha=1, linecolor=nothing, color=HSV((finger - 1) * 720 / numFingers, 1, 1), label="", dpi=100) # Border
-    plot!(rect, fillalpha=1, linecolor=nothing, color=HSVA(color, 0.5), label="", dpi=100)
-
-    if home == 1
-        #plot!(rect, fillalpha=0.2, linecolor=nothing, color=HSVA(0, 0, 0, 0.3), label="", dpi=100)
-        plot!([x], [y - 0.33], shape=:rect, fillalpha=0.2, linecolor=nothing, color=HSV(0, 0, 0), label="", markersize=1.5, dpi=100)
-    end
-
-    # Draws character
-    annotate!(x, y, text(uppercase(strip(string(letter))), :black, :center, 8))
-end
-
-function drawKeyboard(myGenome, filepath, layoutMap)
-    plot(axis=([], false))
-
-    for (letter, i) in myGenome
-        drawKey(layoutMap[i], letter)
-    end
-
-    for (name, i) in noCharKeys
-        drawKey(layoutMap[i], name)
-    end
-
-    plot!(aspect_ratio=1, legend=false)
-    savefig(filepath)
-end
-
-function drawKeyboardAtomic(lk, genome, filepath, layoutMap)
-    lock(lk) do
-        drawKeyboard(genome, filepath, layoutMap)
-    end
-end
 
 function doKeypress(myFingerList, keyPress, oldFinger, oldHand, layoutMap)
     (x, y, _), (finger, _), row = layoutMap[keyPress]
@@ -185,6 +129,8 @@ function objectiveFunction(file, genome, layoutMap, baselineScore)
     return objective
 end
 
+const keyboardColorMap = computeKeyboardColorMap(charFrequency)
+
 # Has probability 0.5 of changing current genome to best when starting new epoch
 # Has probability e^(-delta/t) of changing current genome to a worse when not the best genome
 function runSA(;
@@ -193,6 +139,7 @@ function runSA(;
     rng,
     text,
     layoutMap,
+    keyboardColorMap,
     baselineGenome,
     genomeGenerator,
     temperature,
@@ -215,7 +162,7 @@ function runSA(;
     bestGenome = currentGenome
     bestObjective = currentObjective
 
-    Threads.@spawn :interactive drawKeyboardAtomic(lk, bestGenome, "data/result/$runid - first.png", layoutMap)
+    Threads.@spawn :interactive drawKeyboard(bestGenome, "data/result/$runid - first.png", layoutMap, keyboardColorMap, lk)
 
     baseTemp = temperature
     for iteration in 1:num_iterations
@@ -251,7 +198,7 @@ function runSA(;
                 bestObjective = newObjective
 
                 verbose && println("(new best, text being saved)")
-                Threads.@spawn :interactive drawKeyboardAtomic(lk, bestGenome, "data/result$runid/$iteration.png", layoutMap)
+                Threads.@spawn :interactive drawKeyboard(bestGenome, "data/result$runid/$iteration.png", layoutMap, keyboardColorMap, lk)
                 # open("data/result/bestGenomes.txt", "a") do io
                 #     print(io, iteration, ":")
                 #     for c in bestGenome
@@ -279,7 +226,7 @@ function runSA(;
         end
     end
 
-    Threads.@spawn :interactive drawKeyboardAtomic(lk, bestGenome, "data/result/$runid - final.png", layoutMap)
+    Threads.@spawn :interactive drawKeyboard(bestGenome, "data/result/$runid - final.png", layoutMap, keyboardColorMap, lk)
 
     return bestGenome, bestObjective
 end
@@ -315,6 +262,7 @@ objectives = Dict{Any,Any}()
                 rng=rngs[i],
                 text=textdata,
                 layoutMap=defaultLayoutMap,
+                keyboardColorMap=keyboardColorMap,
                 baselineGenome=keyMapDict,
                 genomeGenerator=() -> shuffleKeyMap(rngs[i], keyMapDict, fixedKeys),
                 #genomeGenerator=() -> keyMapDict,
@@ -334,5 +282,5 @@ objectives = Dict{Any,Any}()
     bestI, bestG, bestO = reduce(((i, g, o), (i2, g2, o2)) -> o < o2 ? (i, g, o) : (i2, g2, o2), ((i, genomes[i], objectives[i]) for i in filter(x -> haskey(genomes, x), 1:nts)))
 
     println("Best overall: $bestI; Score: $bestO")
-    drawKeyboard(bestG, "data/result/bestOverall - $bestI.png", defaultLayoutMap)
+    drawKeyboard(bestG, "data/result/bestOverall - $bestI.png", defaultLayoutMap, keyboardColorMap)
 end
