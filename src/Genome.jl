@@ -5,7 +5,7 @@ using Utils
 
 # Num keys should not exceed length(keyMap) - length(fixedKeys)
 function shuffleKeyMap(rng, keyMap, fixedKeys; numKeys=nothing)
-    fkm, skm = conditionalSplit(((k, v),) -> k in fixedKeys, keyMap)
+    fkm, skm = conditionalSplit(((k, v),) -> k in fixedKeys, deepcopy(keyMap))
     ks, vs = collect(keys(skm)), collect(values(skm))
 
     shuffledKeys = randperm(rng, length(vs))
@@ -17,6 +17,18 @@ function shuffleKeyMap(rng, keyMap, fixedKeys; numKeys=nothing)
     return d
 end
 
-export shuffleKeyMap
+function shuffleGenomeKeyMap(rng, genome, fixedKeys, temperature)
+    numMovableKeys = length(genome) - length(fixedKeys)
+    numKeys = Int(max(2, min(floor(temperature / 100), numMovableKeys)))
+
+    # Prevents a shuffle that returns the exact same genome, losing time uselessly recomputing data
+    newGenome = genome
+    while newGenome == genome
+        newGenome = shuffleKeyMap(rng, genome, fixedKeys; numKeys=numKeys)
+    end
+
+    return newGenome
+end
+export shuffleKeyMap, shuffleGenomeKeyMap
 
 end

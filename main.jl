@@ -18,7 +18,6 @@ using Genome
 # TODO Put code after functions and remove globals
 
 textpath = "data/dataset.txt" # File to save/get text data
-kbResultsFilePath = "data/result/iterationScores.txt" # File to save keyboard results data
 
 # Processing data
 mkpath("data/result")
@@ -75,7 +74,7 @@ function drawKey(key, letter)
     annotate!(x, y, text(uppercase(strip(string(letter))), :black, :center, 8))
 end
 
-function drawKeyboard(myGenome, id, layoutMap)
+function drawKeyboard(myGenome, filepath, layoutMap)
     plot(axis=([], false))
 
     for (letter, i) in myGenome
@@ -87,10 +86,14 @@ function drawKeyboard(myGenome, id, layoutMap)
     end
 
     plot!(aspect_ratio=1, legend=false)
-    savefig("data/result/$id.png")
+    savefig(filepath)
 end
 
-appendUpdates(updateLine, kbResultsFilePath) = open(f -> write(f, updateLine, "\n"), kbResultsFilePath, "a")
+function drawKeyboardAtomic(lk, genome, filepath, layoutMap)
+    lock(lk) do
+        drawKeyboard(genome, filepath, layoutMap)
+    end
+end
 
 function doKeypress(myFingerList, keyPress, oldFinger, oldHand, layoutMap)
     (x, y, _), (finger, _), row = layoutMap[keyPress]
@@ -182,101 +185,93 @@ function objectiveFunction(file, genome, layoutMap, baselineScore)
     return objective
 end
 
-# TODO Move to Genome
-function shuffleGenomeKeyMap(rng, genomeArray, fixedKeys, temperature)
-    noSwitches = Int(maximum([2, minimum([floor(temperature / 100), numFixedKeys])]))
-
-    return shuffleKeyMap(rng, genomeArray, fixedKeys; numKeys=noSwitches)
-end
-
+# Has probability 0.5 of changing current genome to best when starting new epoch
+# Has probability e^(-delta/t) of changing current genome to a worse when not the best genome
 function runSA(;
+    runid,
+    lk,
     rng,
     text,
     layoutMap,
     baselineGenome,
     genomeGenerator,
-    kbResultsFilePath,
     temperature,
     epoch,
     coolingRate,
     num_iterations,
-    save_current_best,
     verbose,
 )
+    mkpath("data/result$runid")
+
     verbose && println("Running code...")
     verbose && print("Calculating raw baseline: ")
     baselineScore = baselineObjectiveFunction(text, baselineGenome, layoutMap)
     verbose && println(baselineScore)
     verbose && println("From here everything is reletive with + % worse and - % better than this baseline \n Note that best layout is being saved as a png at each step. Kill program when satisfied.")
 
-    verbose && println("Temperature \t Best Score \t New Score")
-
-    # setup
     currentGenome = genomeGenerator()
     currentObjective = objectiveFunction(text, currentGenome, layoutMap, baselineScore)
 
     bestGenome = currentGenome
     bestObjective = currentObjective
 
-    drawKeyboard(bestGenome, 0, layoutMap)
+    Threads.@spawn :interactive drawKeyboardAtomic(lk, bestGenome, "data/result/$runid - first.png", layoutMap)
 
-    # run SA
-    staticCount = 0.0
-    iteration = 0
-    while iteration <= num_iterations && temperature > 1.0
-        iteration += 1
-        # ~ create new genome ~
-        newGenome = shuffleGenomeKeyMap(rng, currentGenome, fixedKeys, 2)
+    baseTemp = temperature
+    for iteration in 1:num_iterations
+        if temperature ≤ 1
+            break
+        end
 
-        # ~ asess ~
+        # Create new genome
+        newGenome = shuffleGenomeKeyMap(rng, currentGenome, fixedKeys, temperature)
+
+        # Asess
         newObjective = objectiveFunction(text, newGenome, layoutMap, baselineScore)
         delta = newObjective - currentObjective
 
-        verbose && println(round(temperature, digits=2), "\t", round(bestObjective, digits=2), "\t", round(newObjective, digits=2))
+        sit = lpad(iteration, 6, " ")
+        stemp = lpad(round(temperature, digits=2), 7, " ")
+        sobj = lpad(round(bestObjective, digits=3), 8, " ")
+        snobj = lpad(round(newObjective, digits=3), 8, " ")
+        updateLine = "Iteration: $sit, temp: $stemp, best obj: $sobj, new obj: $snobj"
 
+        verbose && println(updateLine)
 
         if delta < 0
-            currentGenome = deepcopy(newGenome)
+            # If new keyboard is better (less objective is better)
+
+            currentGenome = newGenome
             currentObjective = newObjective
 
-            updateLine = string(round(temperature, digits=2), ", ", iteration, ", ", round(bestObjective, digits=5), ", ", round(newObjective, digits=5))
-            appendUpdates(updateLine, kbResultsFilePath)
+            open(f -> write(f, updateLine, "\n"), "data/result/iterationScores$runid.txt", "a")
 
             if newObjective < bestObjective
                 bestGenome = newGenome
                 bestObjective = newObjective
 
-                #staticCount = 0.0
-
-                if save_current_best === :plot
-                    verbose && println("(new best, png being saved)")
-                    drawKeyboard(bestGenome, iteration, layoutMap)
-                else
-                    verbose && println("(new best, text being saved)")
-                    open("bestGenomes.txt", "a") do io
-                        print(io, iteration, ":")
-                        for c in bestGenome
-                            print(io, c)
-                        end
-                        println(io)
-                    end
-                end
+                verbose && println("(new best, text being saved)")
+                Threads.@spawn :interactive drawKeyboardAtomic(lk, bestGenome, "data/result$runid/$iteration.png", layoutMap)
+                # open("data/result/bestGenomes.txt", "a") do io
+                #     print(io, iteration, ":")
+                #     for c in bestGenome
+                #         print(io, c)
+                #     end
+                #     println(io)
+                # end
             end
         elseif exp(-delta / temperature) > rand(rng)
-            #print(" *")
+            # Changes genome with probability e^(-delta/t)
+
             currentGenome = newGenome
             currentObjective = newObjective
         end
 
-        #print("\n")
+        # Starting new epoch
+        if iteration > epoch && (iteration % epoch == 1)
+            temperature = baseTemp * coolingRate^floor(Int64, iteration / epoch)
 
-
-        staticCount += 1.0
-
-        if staticCount > epoch
-            staticCount = 0.0
-            temperature = temperature * coolingRate
-
+            # Changes genome with probability 0.5
             if rand(rng) < 0.5
                 currentGenome = bestGenome
                 currentObjective = bestObjective
@@ -284,29 +279,60 @@ function runSA(;
         end
     end
 
-    drawKeyboard(bestGenome, "final", layoutMap)
+    Threads.@spawn :interactive drawKeyboardAtomic(lk, bestGenome, "data/result/$runid - final.png", layoutMap)
 
-    return bestGenome
-
+    return bestGenome, bestObjective
 end
 
-seed = 123456
-const rng = StableRNGs.LehmerRNG(seed)
+const nts = Threads.nthreads()
 
-# TODO Run multiple times to create many different keyboard layouts, compare them and get the best
+seed = 563622
+const rng = StableRNGs.LehmerRNG(seed)
+const rngs = StableRNGs.LehmerRNG.(rand(rng, 1:typemax(Int64), nts))
+genomes = Dict{Any,Any}()
+objectives = Dict{Any,Any}()
+
+# TODO Use gpu in objective function
+# Run julia --threads=<num threads your processor can run -1>,1 --project=. main.jl
+# Example for 12 core processor, 2 threads per core, total 24 threads: julia --threads=23,1 --project=. main.jl
 # Genomes are keymaps
-@time runSA(
-    rng=rng,
-    text=textdata,
-    layoutMap=defaultLayoutMap,
-    baselineGenome=keyMapDict,
-    genomeGenerator=() -> shuffleKeyMap(rng, keyMapDict, fixedKeys),
-    #genomeGenerator=() -> keyMapDict,
-    kbResultsFilePath=kbResultsFilePath,
-    temperature=500, # TODO 1000
-    epoch=20,
-    coolingRate=0.99, # TODO 0.9999
-    num_iterations=25000, # TODO 500000
-    save_current_best=:plot,
-    verbose=true
-)
+@time begin
+    @sync begin
+        Threads.@threads :static for i in 1:nts
+            tid = Threads.threadid()
+            lk = ReentrantLock()
+
+            # Total number of iterations will be -epoch * log(t) / log(coolingRate)
+            # Compute cooling rate = 1/(t)^(epoch/i)
+            t = 500
+            e = 20
+            niter = 1000
+            cr = (1 / t)^(e / niter)
+
+            genome, objective = runSA(
+                runid=tid,
+                lk=lk,
+                rng=rngs[i],
+                text=textdata,
+                layoutMap=defaultLayoutMap,
+                baselineGenome=keyMapDict,
+                genomeGenerator=() -> shuffleKeyMap(rngs[i], keyMapDict, fixedKeys),
+                #genomeGenerator=() -> keyMapDict,
+                temperature=t,
+                epoch=e,
+                coolingRate=cr,
+                num_iterations=100000,
+                verbose=false
+            )
+
+            # TODO Use Distributed.@distributed to get results
+            genomes[tid] = genome
+            objectives[tid] = objective
+        end
+    end
+
+    bestI, bestG, bestO = reduce(((i, g, o), (i2, g2, o2)) -> o < o2 ? (i, g, o) : (i2, g2, o2), ((i, genomes[i], objectives[i]) for i in filter(x -> haskey(genomes, x), 1:nts)))
+
+    println("Best overall: $bestI; Score: $bestO")
+    drawKeyboard(bestG, "data/result/bestOverall - $bestI.png", defaultLayoutMap)
+end

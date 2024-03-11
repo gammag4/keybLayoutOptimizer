@@ -55,8 +55,6 @@ const numLayoutKeys = length(defaultLayoutMap)
 
 const numKeys = length(keyMapDict)
 
-const numFixedKeys = numKeys - length(fixedKeys)
-
-export fingersHome, defaultLayoutMap, keyMapDict, noCharKeys, fixedKeys, handList, numFingers, numLayoutKeys, numKeys, numFixedKeys
+export fingersHome, defaultLayoutMap, keyMapDict, noCharKeys, fixedKeys, handList, numFingers, numLayoutKeys, numKeys
 
 end
