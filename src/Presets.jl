@@ -1,10 +1,8 @@
 module Presets
 
-include("./Presets/Genomes.jl")
-include("./Presets/LayoutMaps.jl")
+include("./Presets/Generators.jl")
 
-using .Genomes
-using .LayoutMaps
+using .Generators
 
 # Alphabet, n-th letter corresponds to
 const letterList = [
@@ -56,61 +54,52 @@ const letterList = [
     '?'
 ]
 
-const keyMapDict = Dict(
-    'a' => [1, 0], 'A' => [1, 1],
-    'b' => [2, 0], 'B' => [2, 1],
-    'c' => [3, 0], 'C' => [3, 1],
-    'd' => [4, 0], 'D' => [4, 1],
-    'e' => [5, 0], 'E' => [5, 1],
-    'f' => [6, 0], 'F' => [6, 1],
-    'g' => [7, 0], 'G' => [7, 1],
-    'h' => [8, 0], 'H' => [8, 1],
-    'i' => [9, 0], 'I' => [9, 1],
-    'j' => [10, 0], 'J' => [10, 1],
-    'k' => [11, 0], 'K' => [11, 1],
-    'l' => [12, 0], 'L' => [12, 1],
-    'm' => [13, 0], 'M' => [13, 1],
-    'n' => [14, 0], 'N' => [14, 1],
-    'o' => [15, 0], 'O' => [15, 1],
-    'p' => [16, 0], 'P' => [16, 1],
-    'q' => [17, 0], 'Q' => [17, 1],
-    'r' => [18, 0], 'R' => [18, 1],
-    's' => [19, 0], 'S' => [19, 1],
-    't' => [20, 0], 'T' => [20, 1],
-    'u' => [21, 0], 'U' => [21, 1],
-    'v' => [22, 0], 'V' => [22, 1],
-    'w' => [23, 0], 'W' => [23, 1],
-    'x' => [24, 0], 'X' => [24, 1],
-    'y' => [25, 0], 'Y' => [25, 1],
-    'z' => [26, 0], 'Z' => [26, 1],
-    '0' => [27, 0], ')' => [27, 1],
-    '1' => [28, 0], '!' => [28, 1],
-    '2' => [29, 0], '@' => [29, 1],
-    '3' => [30, 0], '#' => [30, 1],
-    '4' => [31, 0], '$' => [31, 1],
-    '5' => [32, 0], '%' => [32, 1],
-    '6' => [33, 0], '^' => [33, 1],
-    '7' => [34, 0], '&' => [34, 1],
-    '8' => [35, 0], '*' => [35, 1],
-    '9' => [36, 0], '(' => [36, 1],
-    '`' => [37, 0], '~' => [37, 1],
-    '-' => [38, 0], '_' => [38, 1],
-    '=' => [39, 0], '+' => [39, 1],
-    '[' => [40, 0], '{' => [40, 1],
-    ']' => [41, 0], '}' => [41, 1],
-    ';' => [42, 0], ':' => [42, 1],
-    ''' => [43, 0], '"' => [43, 1],
-    ',' => [44, 0], '<' => [44, 1],
-    '.' => [45, 0], '>' => [45, 1],
-    '/' => [46, 0], '?' => [46, 1]
+# TODO Change to 'a' => 1, ... and let everything lowercase
+
+# Keychron Q1 Pro layout
+const defaultLayoutMap = layoutGenerator(
+    rowsList=([
+            [(1, 1, 0), (sp, 0.25, 0), (4, 1, 0), (sp, 0.25, 0), (4, 1, 0), (sp, 0.25, 0), (4, 1, 0), (sp, 0.25, 0), (1, 1, 0)],
+            [(vsp, 0.25, 0)],
+            [(13, 1, 0), (1, 2, 0), (sp, 0.25, 0), (1, 1, 0)],
+            [(1, 1.5, 0), (12, 1, 0), (1, 1.5, 0), (sp, 0.25, 0), (1, 1, 0)],
+            [(1, 1.75, 0), (11, 1, 0), (1, 2.25, 0), (sp, 0.25, 0), (1, 1, 0)],
+            [(1, 2.25, 0), (10, 1, 0), (1, 1.75, 0), (sp, 0.25, 0), (1, 1, 0.25)],
+            [(3, 1.25, 0), (1, 6.25, 0), (3, 1, 0), (sp, 0.25, 0), (3, 1, 0.25)],
+        ], (0.5, 0.5)),
+    keysFingersList=[
+        [1, 15, 30, 45, 59, 72, 2, 16, 31, 46, 60, 73, 74],
+        [3, 17, 32, 47, 61],
+        [4, 18, 33, 48, 62],
+        [5, 19, 34, 49, 63, 6, 20, 35, 50, 64],
+        [75],
+        [],
+        [7, 21, 36, 51, 65, 8, 22, 37, 52, 66],
+        [9, 23, 38, 53, 67, 76],
+        [10, 24, 39, 54, 68, 77],
+        [11, 12, 13, 14, 25, 26, 27, 28, 29, 40, 41, 42, 43, 44, 55, 56, 57, 58, 69, 70, 71, 78, 79, 80, 81]
+    ],
+    fingersHome=[46, 47, 48, 49, 75, 75, 52, 53, 54, 55]
 )
 
-const handList = [1, 1, 1, 1, 2, 2, 2, 2] # what finger is with which hand
+const keyMapDict = keyMapGenerator(
+    keys=["`1234567890-=", "\tqwertyuiop[]\\", "asdfghjkl;'\n", "zxcvbnm,./", " "], # Rows of the keyboard layout that are actual characters
+    startIndices=[15, 30, 46, 60, 75] # Indices of keys of the first key of each row in the layout map
+)
+
+const fixedKeys = collect("1234567890\t\n ") # Keys that will not change on shuffle
+#const fixedKeys = collect("\t\n ") # Numbers also change
+
+const handList = [1, 1, 1, 1, 1, 2, 2, 2, 2, 2] # What finger is with which hand
 
 const numFingers = length(handList)
 
-const numKeys = length(letterList)
+const numLayoutKeys = length(defaultLayoutMap)
 
-export defaultGenome, defaultLayoutMap, letterList, keyMapDict, handList, numFingers, numKeys
+const numKeys = length(keyMapDict)
+
+const numFixedKeys = numKeys - length(fixedKeys)
+
+export defaultLayoutMap, letterList, keyMapDict, fixedKeys, handList, numFingers, numLayoutKeys, numKeys, numFixedKeys
 
 end
