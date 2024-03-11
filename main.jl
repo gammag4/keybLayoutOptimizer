@@ -44,29 +44,44 @@ const doubleHandEffort = -1
 normFreqToHSV(f) = HSV((1.0 - f) * 170, f * 0.7 + 0.3, 1.0)
 
 function computeKeyboardColorMap(charFrequency)
+    charFrequency = filter(((k, v),) -> !isspace(k), charFrequency)
     # Normalizes char frequency
     maxf = maximum(values(charFrequency))
     minf = minimum(values(charFrequency))
 
-    return Dict(k => normFreqToHSV((v - minf) / (maxf - minf)) for (k, v) in charFrequency)
+    return Dict(k => normFreqToHSV(log2(1 + (v - minf) / (maxf - minf))) for (k, v) in charFrequency)
 end
 
 const keyboardColorMap = computeKeyboardColorMap(charFrequency)
 
+function drawKey(key, letter)
+    (x, y, w), (finger, home), row = key
+    h = 1 # TODO Add h to layout
+    color = get(keyboardColorMap, lowercase(letter), HSV(220, 0.2, 1))
+    border = Shape((x - 0.5 * w) .+ [0, w, w, 0], (y - 0.5 * h) .+ [0, 0, h, h])
+    rect = Shape((x - 0.5 * w + 0.03) .+ ((w - 0.06) .* [0, 1, 1, 0]), (y - 0.5 * h + 0.03) .+ ((h - 0.06) .* [0, 0, 1, 1]))
+
+    plot!(border, fillalpha=1, linecolor=nothing, color=HSV((finger - 1) * 720 / numFingers, 1, 1), label="", dpi=100) # Border
+    plot!(rect, fillalpha=1, linecolor=nothing, color=HSVA(color, 0.5), label="", dpi=100)
+
+    if home == 1
+        #plot!(rect, fillalpha=0.2, linecolor=nothing, color=HSVA(0, 0, 0, 0.3), label="", dpi=100)
+        plot!([x], [y - 0.33], shape=:rect, fillalpha=0.2, linecolor=nothing, color=HSV(0, 0, 0), label="", markersize=1.5, dpi=100)
+    end
+
+    # Draws character
+    annotate!(x, y, text(uppercase(strip(string(letter))), :black, :center, 8))
+end
+
 function drawKeyboard(myGenome, id, layoutMap)
-    plot()
+    plot(axis=([], false))
 
     for (letter, i) in myGenome
-        (x, y), (finger, home), row = layoutMap[i]
-        color = get(keyboardColorMap, lowercase(letter), HSV(0, 0, 1))
+        drawKey(layoutMap[i], letter)
+    end
 
-        plot!([x], [y], shape=:rect, fillalpha=0.2, linecolor=nothing, color=HSVA(color, 0.5), label="", markersize=16.5, dpi=100)
-
-        # Draws four lines using their points (that's why there is 5 xs and ys)
-        plot!([x - 0.45, x + 0.45, x + 0.45, x - 0.45, x - 0.45], [y - 0.45, y - 0.45, y + 0.45, y + 0.45, y - 0.45], color=HSV(0, 0, 0), fillalpha=0.2, label="", dpi=100)
-
-        # Draws character
-        annotate!(x, y, text(letter, :black, :center, 10))
+    for (name, i) in noCharKeys
+        drawKey(layoutMap[i], name)
     end
 
     plot!(aspect_ratio=1, legend=false)
@@ -76,7 +91,7 @@ end
 appendUpdates(updateLine, kbResultsFilePath) = open(f -> write(f, updateLine, "\n"), kbResultsFilePath, "a")
 
 function doKeypress(myFingerList, keyPress, oldFinger, oldHand, layoutMap)
-    (x, y), (finger, home), row = layoutMap[keyPress]
+    (x, y, _), (finger, home), row = layoutMap[keyPress]
     currentHand = handList[finger]
 
     # loop through fingers
@@ -137,7 +152,7 @@ function baselineObjectiveFunction(file, myGenome, layoutMap)
     myFingerList = zeros(10, 6)
 
     for i in 1:numKeys
-        ((x, y), (finger, home), _) = layoutMap[i]
+        (x, y, _), (finger, home), _ = layoutMap[i]
 
         if home == 1.0
             myFingerList[finger, 1:4] = [x, y, x, y]
