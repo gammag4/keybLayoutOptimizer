@@ -46,7 +46,7 @@ function computeTextStats(text)
     )
 end
 
-const EffortWeighting = Tuple{Float64,Int,Int,Float64,Float64}
+const EffortWeighting = Any
 
 struct DataStatsType
     fingerEffort::Vector{Float64}

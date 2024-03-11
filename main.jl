@@ -30,14 +30,16 @@ textdata = open(io -> read(io, String), textpath, "r")
 const (; fingerEffort, rowEffort, textStats, effortWeighting) = computeStats(
     text=textdata,
     fingersCPS=[5.5, 5.9, 6.3, 6.2, 6.4, 5.3, 7.0, 6.7, 5.2, 6.2], # Tested by just pressing the home key of each finger
-    rowsCPS=[1.87, 2.47, 2.60, 5.07, 2.4, 2.36], # Tested by bringing the pinky to the respective key and going back to the home key
-    effortWeighting=(0.7917, 1, 0, 0.4773, 0.00), # dist, finger, row. Also had room for other weightings but removed for simplicity
+    rowsCPS=[2.36, 2.4, 5.07, 2.6, 2.47, 1.87], # Top to bottom, tested by bringing the pinky to the respective key and going back to the home key
+    effortWeighting=(1.2, 1, 1, 0.7, 0.4, 0.4), # dist, double finger, single hand, right hand, finger cps, row cps
+    #effortWeighting=(0.7917, 1, 0, 0, 0.4773, 0.00), # dist, double finger, single hand, right hand, finger cps, row cps
 )
 const (; charHistogram, charFrequency, usedChars) = textStats
 
-const distanceEffort = 1 # at 2 distance penalty is squared
-const doubleFingerEffort = 1
-const doubleHandEffort = -1
+const distanceEffort = 1.2 # Always positive. At 2, distance penalty is squared
+const doubleFingerEffort = 1 # Positive prevents using same finger more than once
+const singleHandEffort = 1 # Positive prefers double hand, negative prefers single hand
+const rightHandEffort = 1 # Has to use the mouse
 
 # Hue goes from 170 (min f) to 0 (max f)
 # Saturation is the normalized frequency of each key
@@ -109,42 +111,40 @@ function doKeypress(myFingerList, keyPress, oldFinger, oldHand, layoutMap)
     dx, dy = x - currentX, y - currentY
     distance = sqrt(dx^2 + dy^2)
 
-    distancePenalty = distance^distanceEffort # i.e. squared
+    distancePenalty = (distance + 1)^distanceEffort - 1 # This way, distanceEffort always increases even if in [0, 1]
     newDistance = distanceCounter + distance
 
-    # ~ double finger ~
+    # Double finger
     doubleFingerPenalty = 0
-    if finger != oldFinger && oldFinger != 0 && distance != 0
+    if finger == oldFinger && distance > 0.01
         doubleFingerPenalty = doubleFingerEffort
     end
-    oldFinger = finger
 
-    # ~ double hand ~
-    doubleHandPenalty = 0
-    if currentHand != oldHand && oldHand != 0
-        doubleHandPenalty = doubleHandEffort
+    # Single hand
+    singleHandPenalty = 0
+    if currentHand == oldHand
+        singleHandPenalty = singleHandEffort
     end
-    oldHand = currentHand
 
-    # ~ finger
+    # Right hand
+    rightHandPenalty = 0
+    if currentHand == 2
+        rightHandPenalty = rightHandEffort
+    end
+
     fingerPenalty = fingerEffort[finger]
-
-    # ~ row
     rowPenalty = rowEffort[row]
 
-    # ~ combined weighting
-    penalties = (distancePenalty, doubleFingerPenalty, doubleHandPenalty, fingerPenalty, rowPenalty)
-    penalty = sum(penalties .* effortWeighting)
-    newObjective = objectiveCounter + penalty
+    # Combined weighting
+    penalties = (distancePenalty, doubleFingerPenalty, singleHandPenalty, rightHandPenalty, fingerPenalty, rowPenalty) .* effortWeighting
+    newObjective = objectiveCounter + sum(penalties)
 
-    # ~ save
     myFingerList[finger][3] = x
     myFingerList[finger][4] = y
     myFingerList[finger][5] = newDistance
     myFingerList[finger][6] = newObjective
 
-    # return
-    return myFingerList, oldFinger, oldHand
+    return myFingerList, finger, currentHand
 end
 
 function baselineObjectiveFunction(file, myGenome, layoutMap)
