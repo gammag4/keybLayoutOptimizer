@@ -6,6 +6,8 @@ using .Generators
 
 # TODO Change to 'a' => 1, ... and let everything lowercase
 
+const fingersHome = [25, 26, 27, 28, 4, 4, 31, 32, 33, 34]
+
 # Keychron Q1 Pro layout
 const defaultLayoutMap = layoutGenerator(
     rowsList=([
@@ -29,7 +31,7 @@ const defaultLayoutMap = layoutGenerator(
         [6, 20, 33, 47, 62, 77],
         [7, 8, 9, 10, 21, 22, 23, 34, 35, 36, 37, 48, 49, 50, 51, 52, 63, 64, 65, 66, 67, 78, 79, 80, 81],
     ],
-    fingersHome=[25, 26, 27, 28, 4, 4, 31, 32, 33, 34]
+    fingersHome=fingersHome
 )
 
 const keyMapDict = keyMapGenerator(
@@ -55,6 +57,6 @@ const numKeys = length(keyMapDict)
 
 const numFixedKeys = numKeys - length(fixedKeys)
 
-export defaultLayoutMap, keyMapDict, noCharKeys, fixedKeys, handList, numFingers, numLayoutKeys, numKeys, numFixedKeys
+export fingersHome, defaultLayoutMap, keyMapDict, noCharKeys, fixedKeys, handList, numFingers, numLayoutKeys, numKeys, numFixedKeys
 
 end

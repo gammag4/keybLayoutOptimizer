@@ -91,57 +91,57 @@ end
 appendUpdates(updateLine, kbResultsFilePath) = open(f -> write(f, updateLine, "\n"), kbResultsFilePath, "a")
 
 function doKeypress(myFingerList, keyPress, oldFinger, oldHand, layoutMap)
-    (x, y, _), (finger, home), row = layoutMap[keyPress]
+    (x, y, _), (finger, _), row = layoutMap[keyPress]
     currentHand = handList[finger]
+    homeX, homeY, currentX, currentY, distanceCounter, objectiveCounter = myFingerList[finger]
 
-    # loop through fingers
+    # Sets other fingers back to home position
     for fingerID in 1:numFingers
-        # load
-        homeX, homeY, currentX, currentY, distanceCounter, objectiveCounter = ntuple(i -> myFingerList[fingerID, i], Val(6))
+        hx, hy, _, _, _, _ = myFingerList[fingerID]
 
-        if fingerID == finger # move finger to key and include penalty
-            # ~ distance
-            distance = sqrt((x - currentX)^2 + (y - currentY)^2)
-
-            distancePenalty = distance^distanceEffort # i.e. squared
-            newDistance = distanceCounter + distance
-
-            # ~ double finger ~
-            doubleFingerPenalty = 0
-            if finger != oldFinger && oldFinger != 0 && distance != 0
-                doubleFingerPenalty = doubleFingerEffort
-            end
-            oldFinger = finger
-
-
-            # ~ double hand ~
-            doubleHandPenalty = 0
-            if currentHand != oldHand && oldHand != 0
-                doubleHandPenalty = doubleHandEffort
-            end
-            oldHand = currentHand
-
-            # ~ finger
-            fingerPenalty = fingerEffort[fingerID]
-
-            # ~ row
-            rowPenalty = rowEffort[row]
-
-            # ~ combined weighting
-            penalties = (distancePenalty, doubleFingerPenalty, doubleHandPenalty, fingerPenalty, rowPenalty)
-            penalty = sum(penalties .* effortWeighting)
-            newObjective = objectiveCounter + penalty
-
-            # ~ save
-            myFingerList[fingerID, 3] = x
-            myFingerList[fingerID, 4] = y
-            myFingerList[fingerID, 5] = newDistance
-            myFingerList[fingerID, 6] = newObjective
-        else # re-home unused finger
-            myFingerList[fingerID, 3] = homeX
-            myFingerList[fingerID, 4] = homeY
-        end
+        myFingerList[fingerID][3] = hx
+        myFingerList[fingerID][4] = hy
     end
+
+    myFingerList[finger][3] = currentX
+    myFingerList[finger][4] = currentY
+
+    dx, dy = x - currentX, y - currentY
+    distance = sqrt(dx^2 + dy^2)
+
+    distancePenalty = distance^distanceEffort # i.e. squared
+    newDistance = distanceCounter + distance
+
+    # ~ double finger ~
+    doubleFingerPenalty = 0
+    if finger != oldFinger && oldFinger != 0 && distance != 0
+        doubleFingerPenalty = doubleFingerEffort
+    end
+    oldFinger = finger
+
+    # ~ double hand ~
+    doubleHandPenalty = 0
+    if currentHand != oldHand && oldHand != 0
+        doubleHandPenalty = doubleHandEffort
+    end
+    oldHand = currentHand
+
+    # ~ finger
+    fingerPenalty = fingerEffort[finger]
+
+    # ~ row
+    rowPenalty = rowEffort[row]
+
+    # ~ combined weighting
+    penalties = (distancePenalty, doubleFingerPenalty, doubleHandPenalty, fingerPenalty, rowPenalty)
+    penalty = sum(penalties .* effortWeighting)
+    newObjective = objectiveCounter + penalty
+
+    # ~ save
+    myFingerList[finger][3] = x
+    myFingerList[finger][4] = y
+    myFingerList[finger][5] = newDistance
+    myFingerList[finger][6] = newObjective
 
     # return
     return myFingerList, oldFinger, oldHand
@@ -149,14 +149,11 @@ end
 
 function baselineObjectiveFunction(file, myGenome, layoutMap)
     # homeX, homeY, currentX, currentY, distanceCounter, objectiveCounter
-    myFingerList = zeros(10, 6)
+    myFingerList = repeat([zeros(6)], 10)
 
-    for i in 1:numKeys
-        (x, y, _), (finger, home), _ = layoutMap[i]
-
-        if home == 1.0
-            myFingerList[finger, 1:4] = [x, y, x, y]
-        end
+    for i in 1:numFingers
+        (x, y, _), (finger, _), _ = layoutMap[i]
+        myFingerList[finger][1:4] = [x, y, x, y]
     end
 
     objective = 0
@@ -176,7 +173,7 @@ function baselineObjectiveFunction(file, myGenome, layoutMap)
     end
 
     # calculate and return objective
-    objective = sum(myFingerList[:, 6])
+    objective = sum(map(x -> x[6], myFingerList))
     return objective
 end
 
