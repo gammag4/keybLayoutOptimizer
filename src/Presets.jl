@@ -4,56 +4,6 @@ include("./Presets/Generators.jl")
 
 using .Generators
 
-# Alphabet, n-th letter corresponds to
-const letterList = [
-    'A',
-    'B',
-    'C',
-    'D',
-    'E',
-    'F',
-    'G',
-    'H',
-    'I',
-    'J',
-    'K',
-    'L',
-    'M',
-    'N',
-    'O',
-    'P',
-    'Q',
-    'R',
-    'S',
-    'T',
-    'U',
-    'V',
-    'W',
-    'X',
-    'Y',
-    'Z',
-    '0',
-    '1',
-    '2',
-    '3',
-    '4',
-    '5',
-    '6',
-    '7',
-    '8',
-    '9',
-    '~',
-    '-',
-    '+',
-    '[',
-    ']',
-    ';',
-    ''',
-    '<',
-    '>',
-    '?'
-]
-
 # TODO Change to 'a' => 1, ... and let everything lowercase
 
 # Keychron Q1 Pro layout
@@ -105,6 +55,6 @@ const numKeys = length(keyMapDict)
 
 const numFixedKeys = numKeys - length(fixedKeys)
 
-export defaultLayoutMap, letterList, keyMapDict, noCharKeys, fixedKeys, handList, numFingers, numLayoutKeys, numKeys, numFixedKeys
+export defaultLayoutMap, keyMapDict, noCharKeys, fixedKeys, handList, numFingers, numLayoutKeys, numKeys, numFixedKeys
 
 end
