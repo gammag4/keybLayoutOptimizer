@@ -1,5 +1,6 @@
 module Presets
 
+using Utils
 using DataProcessing
 using DataStats
 using KeyboardGenerator
@@ -19,15 +20,10 @@ textData = open(io -> read(io, String), textpath, "r")
 const dataStats = computeStats(
     text=textData,
     fingersCPS=Vector{Float64}([5.5, 5.9, 6.3, 6.2, 6.4, 5.3, 7.0, 6.7, 5.2, 6.2]), # Tested by just pressing the home key of each finger
-    rowsCPS=Vector{Float64}([2.36, 2.4, 5.07, 2.6, 2.47, 1.87]), # Top to bottom, tested by bringing the pinky to the respective key and going back to the home key
-    effortWeighting=NTuple{6,Float64}((0.05, 1, 1, 0.8, 0.4, 0.3),), # dist, double finger, single hand, right hand, finger cps, row cps
+    rowsCPS=Vector{Float64}([2.27, 3.07, 6.07, 2.93, 2.73, 2.67]), # Bottom to top, tested by bringing the pinky to the respective key and going back to the home key
+    effortWeighting=NTuple{6,Float64}((0.4, 1, 1, 0.8, 0.2, 0.15),), # dist, double finger, single hand, right hand, finger cps, row cps
     #effortWeighting=(0.7917, 1, 0, 0, 0.4773, 0.00), # dist, double finger, single hand, right hand, finger cps, row cps
 )
-
-const (; textStats) = dataStats
-const (; charFrequency) = textStats
-
-const keyboardColorMap = computeKeyboardColorMap(charFrequency)
 
 const fingersHome = [25, 26, 27, 28, 4, 4, 31, 32, 33, 34]
 
@@ -63,17 +59,48 @@ const keyMap = keyMapGenerator(
 )
 
 const noCharKeyMap = keyMapGenerator(
-    keys=[["ctrl", "win", "alt"], ["agr", "fn", "rctl", "lf", "dn", "rt"], ["shift"], ["rshift", "up"], ["caps"], ["enter", "del"], ["ins"], ["bsp", ""], ["esc"], ["f$i" for i in 1:12], ["psc"]],
-    startIndices=[1, 5, 11, 22, 24, 36, 52, 66, 68, 69, 81]
+    keys=[["ctrl", "win", "alt", "space", "agr", "fn", "rctl", "lf", "dn", "rt"], ["shift"], ["rshift", "up"], ["caps"], ["enter", "del", "tab"], ["ins"], ["bsp", ""], ["esc"], ["f$i" for i in 1:12], ["psc"]],
+    startIndices=[1, 11, 22, 24, 36, 52, 66, 68, 69, 81]
 )
 
-const fixedKeys = collect("1234567890\t\n ") # Keys that will not change on shuffle
+const (; textStats) = dataStats
+const (; charFrequency) = textStats
+const keyboardColorMap = computeKeyboardColorMap(charFrequency)
+
+const fixedKeys = collect("1234567890\t\n\\ ") # Keys that will not change on shuffle
 #const fixedKeys = collect("\t\n ") # Numbers also change
+getFixedMovableKeyMaps(keyMap) = conditionalSplit(((k, v),) -> k in fixedKeys, keyMap)
+const fixedKeyMap, movableKeyMap = getFixedMovableKeyMaps(keyMap)
+const movableKeys = map(((k, v),) -> k, collect(movableKeyMap))
 const handFingers = [1, 1, 1, 1, 1, 2, 2, 2, 2, 2] # What finger is with which hand
 const numFingers = length(handFingers)
 const numKeys = length(keyMap)
 const numLayoutKeys = length(layoutMap)
-const numMovableKeys = length(keyMap) - length(fixedKeys)
+const numFixedKeys = length(fixedKeyMap)
+const numMovableKeys = length(movableKeyMap)
+
+const rewardArgs = (
+    xMoveMultiplier=4, # If 1, the weight of moving around x axis is same as moving in y axis. This effort is because lateral movements are worse
+    distanceEffort=1, # Always positive. At 2, distance penalty is squared
+    doubleFingerEffort=1, # Positive prevents using same finger more than once
+    singleHandEffort=1, # Positive prefers double hand, negative prefers single hand
+    rightHandEffort=1 # Right hand also uses the mouse
+)
+
+# Total number of iterations will be -epoch * log(t) / log(coolingRate)
+# Compute cooling rate = 1/(t)^(epoch/i)
+temperature = 500
+epoch = 20
+numIterations = 10000
+coolingRate = (1 / temperature)^(epoch / numIterations)
+const algorithmArgs = (
+    temperature=temperature,
+    epoch=epoch,
+    numIterations=numIterations,
+    coolingRate=coolingRate,
+    maxIterations=100000,
+    temperatureKeyShuffleMultiplier=0.01 # Is multiplied by temperature to give number of keys shuffled (for 0.01 and t=1000, 10 keys shuffled)
+)
 
 using Colors
 
@@ -82,12 +109,17 @@ struct KeyboardData
     layoutMap::Dict{Int,Tuple{NTuple{3,Float64},NTuple{2,Int},Int}}
     keyMap::Dict{Char,Int}
     noCharKeyMap::Dict{String,Int}
+    fixedKeyMap::Dict{Char,Int}
+    movableKeyMap::Dict{Char,Int}
     fixedKeys::Vector{Char}
+    movableKeys::Vector{Char}
+    getFixedMovableKeyMaps::typeof(getFixedMovableKeyMaps)
     fingersHome::Vector{Int}
     handFingers::Vector{Int}
     numFingers::Int
     numKeys::Int
     numLayoutKeys::Int
+    numFixedKeys::Int
     numMovableKeys::Int
 end
 
@@ -96,15 +128,20 @@ const keyboardData = KeyboardData(
     layoutMap,
     keyMap,
     noCharKeyMap,
+    fixedKeyMap,
+    movableKeyMap,
     fixedKeys,
+    movableKeys,
+    getFixedMovableKeyMaps,
     fingersHome,
     handFingers,
     numFingers,
     numKeys,
     numLayoutKeys,
+    numFixedKeys,
     numMovableKeys,
 )
 
-export textData, dataStats, keyboardData, drawKeyboard
+export textData, dataStats, rewardArgs, algorithmArgs, keyboardData, drawKeyboard
 
 end

@@ -10,6 +10,42 @@ using Revise
 
 using Presets
 using Genome
+using FrequencyKeyboard
+using DrawKeyboard
+
+const (; fingerEffort, rowEffort, textStats, effortWeighting) = dataStats
+const (; charHistogram, charFrequency, usedChars) = textStats
+
+const (;
+    keyboardColorMap,
+    layoutMap,
+    keyMap,
+    noCharKeyMap,
+    fixedKeys,
+    fingersHome,
+    handFingers,
+    numFingers,
+    numKeys,
+    numLayoutKeys,
+    numMovableKeys
+) = keyboardData
+
+const (;
+    xMoveMultiplier,
+    distanceEffort,
+    doubleFingerEffort,
+    singleHandEffort,
+    rightHandEffort,
+) = rewardArgs
+
+const (;
+    temperature,
+    epoch,
+    numIterations,
+    coolingRate,
+    maxIterations,
+    temperatureKeyShuffleMultiplier
+) = algorithmArgs
 
 function doKeypress(keyPress, fingerData, oldFinger, oldHand, keyboardData)
     (; layoutMap, numFingers, handFingers) = keyboardData
@@ -102,31 +138,6 @@ function objectiveFunction(text, genome, keyboardData, baselineScore)
     return objective
 end
 
-const (; fingerEffort, rowEffort, textStats, effortWeighting) = dataStats
-const (; charHistogram, charFrequency, usedChars) = textStats
-
-const (;
-    keyboardColorMap,
-    layoutMap,
-    keyMap,
-    noCharKeyMap,
-    fixedKeys,
-    fingersHome,
-    handFingers,
-    numFingers,
-    numKeys,
-    numLayoutKeys,
-    numMovableKeys
-) = keyboardData
-
-const xMoveMultiplier = 2.5 # If 1, the weight of moving around x axis is same as moving in y axis. This effort is because lateral movements are worse
-const distanceEffort = 1 # Always positive. At 2, distance penalty is squared
-const doubleFingerEffort = 1 # Positive prevents using same finger more than once
-const singleHandEffort = 1 # Positive prefers double hand, negative prefers single hand
-const rightHandEffort = 1 # Right hand also uses the mouse
-
-const temperatureKeyShuffleMultiplier = 0.01 # Is multiplied by temperature to give number of keys shuffled (for 0.01 and t=1000, 10 keys shuffled)
-
 # Has probability 0.5 of changing current genome to best when starting new epoch
 # Has probability e^(-delta/t) of changing current genome to a worse when not the best genome
 function runSA(;
@@ -135,13 +146,13 @@ function runSA(;
     rng,
     text,
     keyboardData,
-    temperatureKeyShuffleMultiplier,
     baselineGenome,
     genomeGenerator,
     temperature,
     epoch,
     coolingRate,
-    num_iterations,
+    maxIterations,
+    temperatureKeyShuffleMultiplier,
     verbose,
 )
     mkpath("data/result$runid")
@@ -162,7 +173,7 @@ function runSA(;
 
     baseTemp = temperature
     try
-        for iteration in 1:num_iterations
+        for iteration in 1:maxIterations
             if temperature ≤ 1
                 break
             end
@@ -252,27 +263,20 @@ objectives = Dict{Any,Any}()
         Threads.@threads :static for i in 1:nts
             tid = Threads.threadid()
 
-            # Total number of iterations will be -epoch * log(t) / log(coolingRate)
-            # Compute cooling rate = 1/(t)^(epoch/i)
-            t = 500
-            e = 20
-            niter = 1000
-            cr = (1 / t)^(e / niter)
-
             genome, objective = runSA(
                 runid=tid,
                 lk=lk,
                 rng=rngs[i],
                 text=textData,
                 keyboardData=keyboardData,
-                temperatureKeyShuffleMultiplier=temperatureKeyShuffleMultiplier,
                 baselineGenome=keyMap,
                 genomeGenerator=() -> shuffleKeyMap(rngs[i], keyMap, fixedKeys),
                 #genomeGenerator=() -> keyMapDict,
-                temperature=t,
-                epoch=e,
-                coolingRate=cr,
-                num_iterations=100000,
+                temperature=temperature,
+                epoch=epoch,
+                coolingRate=coolingRate,
+                maxIterations=maxIterations,
+                temperatureKeyShuffleMultiplier=temperatureKeyShuffleMultiplier,
                 verbose=false
             )
 

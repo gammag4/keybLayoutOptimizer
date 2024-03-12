@@ -16,9 +16,9 @@ function computeKeyboardColorMap(charFrequency)
     return Dict(k => normFreqToHSV(log2(1 + (v - minf) / (maxf - minf))) for (k, v) in charFrequency)
 end
 
-function drawKey(key, letter, keyboardData)
+function drawKey(layoutKey, letter, keyboardData)
     (; keyboardColorMap, numFingers) = keyboardData
-    (x, y, w), (finger, home), row = key
+    (x, y, w), (finger, home), row = layoutKey
     h = 1 # TODO Add h to layout
     color = get(keyboardColorMap, lowercase(letter), HSV(220, 0.2, 1))
     border = Shape((x - 0.5 * w) .+ [0, w, w, 0], (y - 0.5 * h) .+ [0, 0, h, h])
