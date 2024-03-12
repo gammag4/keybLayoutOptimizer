@@ -17,9 +17,9 @@ function shuffleKeyMap(rng, keyMap, fixedKeys; numKeys=nothing)
     return d
 end
 
-function shuffleGenomeKeyMap(rng, genome, fixedKeys, temperature)
+function shuffleGenomeKeyMap(rng, genome, fixedKeys, numKeys)
     numMovableKeys = length(genome) - length(fixedKeys)
-    numKeys = Int(max(2, min(floor(temperature / 100), numMovableKeys)))
+    numKeys = min(max(2, numKeys), numMovableKeys)
 
     # Prevents a shuffle that returns the exact same genome, losing time uselessly recomputing data
     newGenome = genome

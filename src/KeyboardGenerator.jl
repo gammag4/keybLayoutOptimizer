@@ -1,4 +1,4 @@
-module Generators
+module KeyboardGenerator
 
 const sp = -2
 const vsp = -4
@@ -10,7 +10,7 @@ getTotalNumRows(rowslistlist) = maximum(getNumRows.(rowslistlist))
 
 function getLayoutRow(row, x, y)
     pos = x
-    lrow = Tuple{Float64,Float64,Float64}[]
+    lrow = NTuple{3,Float64}[]
 
     for (n, l, h) in row
         if n == sp
@@ -60,7 +60,7 @@ end
 addFingers(layoutTuples, keysFingersList, fingersHome) =
     map(((i, ((x, y, l), r)),) -> ((x, y, l), getFingerData(keysFingersList, fingersHome, i), r), enumerate(layoutTuples))
 
-# Returns list of tuples with ((x, y), (finger, ishome), row number)
+# Returns dictionary that maps key numbers to tuples with ((x, y, l), (finger, ishome), row number)
 function layoutGenerator(; rowsList, keysFingersList, fingersHome)
     # Rows list: Tuple(array(rows/vspacers), (starting x, starting y))
     # Row: array(key batch/spacers)

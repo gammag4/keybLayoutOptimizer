@@ -4,62 +4,34 @@ import Pkg
 Pkg.activate(@__DIR__)
 Pkg.instantiate()
 using Random, StableRNGs
-using Base.Threads
+using .Threads
 using BenchmarkTools
 using Revise
 
 using Presets
-using DataStats
-using DataProcessing
 using Genome
-using DrawKeyboard
 
-# TODO Put code after functions and remove globals
-
-textpath = "data/dataset.txt" # File to save/get text data
-
-# Processing data
-mkpath("data/result")
-processDataFolderIntoTextFile("data/raw_dataset", textpath, overwrite=false, verbose=true)
-
-# Getting data
-textdata = open(io -> read(io, String), textpath, "r")
-
-const (; fingerEffort, rowEffort, textStats, effortWeighting) = computeStats(
-    text=textdata,
-    fingersCPS=[5.5, 5.9, 6.3, 6.2, 6.4, 5.3, 7.0, 6.7, 5.2, 6.2], # Tested by just pressing the home key of each finger
-    rowsCPS=[2.36, 2.4, 5.07, 2.6, 2.47, 1.87], # Top to bottom, tested by bringing the pinky to the respective key and going back to the home key
-    effortWeighting=(1.2, 1, 1, 0.7, 0.4, 0.4), # dist, double finger, single hand, right hand, finger cps, row cps
-    #effortWeighting=(0.7917, 1, 0, 0, 0.4773, 0.00), # dist, double finger, single hand, right hand, finger cps, row cps
-)
-const (; charHistogram, charFrequency, usedChars) = textStats
-
-const distanceEffort = 1.2 # Always positive. At 2, distance penalty is squared
-const doubleFingerEffort = 1 # Positive prevents using same finger more than once
-const singleHandEffort = 1 # Positive prefers double hand, negative prefers single hand
-const rightHandEffort = 1 # Has to use the mouse
-
-function doKeypress(myFingerList, keyPress, oldFinger, oldHand, layoutMap)
+function doKeypress(keyPress, fingerData, oldFinger, oldHand, keyboardData)
+    (; layoutMap, numFingers, handFingers) = keyboardData
     (x, y, _), (finger, _), row = layoutMap[keyPress]
-    currentHand = handList[finger]
-    homeX, homeY, currentX, currentY, distanceCounter, objectiveCounter = myFingerList[finger]
+    currentHand = handFingers[finger]
+    homeX, homeY, currentX, currentY, objectiveCounter = fingerData[finger]
 
     # Sets other fingers back to home position
     for fingerID in 1:numFingers
-        hx, hy, _, _, _, _ = myFingerList[fingerID]
+        hx, hy, _, _, _ = fingerData[fingerID]
 
-        myFingerList[fingerID][3] = hx
-        myFingerList[fingerID][4] = hy
+        fingerData[fingerID][3] = hx
+        fingerData[fingerID][4] = hy
     end
 
-    myFingerList[finger][3] = currentX
-    myFingerList[finger][4] = currentY
+    fingerData[finger][3] = currentX
+    fingerData[finger][4] = currentY
 
     dx, dy = x - currentX, y - currentY
-    distance = sqrt(dx^2 + dy^2)
+    distance = sqrt((dx * xMoveMultiplier)^2 + dy^2)
 
     distancePenalty = (distance + 1)^distanceEffort - 1 # This way, distanceEffort always increases even if in [0, 1]
-    newDistance = distanceCounter + distance
 
     # Double finger
     doubleFingerPenalty = 0
@@ -84,52 +56,76 @@ function doKeypress(myFingerList, keyPress, oldFinger, oldHand, layoutMap)
 
     # Combined weighting
     penalties = (distancePenalty, doubleFingerPenalty, singleHandPenalty, rightHandPenalty, fingerPenalty, rowPenalty) .* effortWeighting
+    #println(penalties)
     newObjective = objectiveCounter + sum(penalties)
 
-    myFingerList[finger][3] = x
-    myFingerList[finger][4] = y
-    myFingerList[finger][5] = newDistance
-    myFingerList[finger][6] = newObjective
+    fingerData[finger][3] = x
+    fingerData[finger][4] = y
+    fingerData[finger][5] = newObjective
 
-    return myFingerList, finger, currentHand
+    return fingerData, finger, currentHand
 end
 
-function baselineObjectiveFunction(file, myGenome, layoutMap)
-    # homeX, homeY, currentX, currentY, distanceCounter, objectiveCounter
-    myFingerList = repeat([zeros(6)], 10)
+function baselineObjectiveFunction(text, genome, keyboardData)
+    (; layoutMap, numFingers) = keyboardData
+    # homeX, homeY, currentX, currentY, objectiveCounter
+    fingerData = repeat([zeros(5)], 10)
 
     for i in 1:numFingers
         (x, y, _), (finger, _), _ = layoutMap[i]
-        myFingerList[finger][1:4] = [x, y, x, y]
+        fingerData[finger][1:4] = [x, y, x, y]
     end
 
     objective = 0
     oldFinger = 0
     oldHand = 0
 
-    for currentCharacter in file
+    for currentCharacter in text
         # determine keypress (nothing if there is no key)
-        keyPress = get(myGenome, currentCharacter, nothing)
+        keyPress = get(genome, currentCharacter, nothing)
 
         if isnothing(keyPress)
             continue
         end
 
         # do keypress
-        myFingerList, oldFinger, oldHand = doKeypress(myFingerList, keyPress, oldFinger, oldHand, layoutMap)
+        fingerData, oldFinger, oldHand = doKeypress(keyPress, fingerData, oldFinger, oldHand, keyboardData)
     end
 
     # calculate and return objective
-    objective = sum(map(x -> x[6], myFingerList))
+    objective = sum(map(x -> x[5], fingerData))
     return objective
 end
 
-function objectiveFunction(file, genome, layoutMap, baselineScore)
-    objective = (baselineObjectiveFunction(file, genome, layoutMap) / baselineScore - 1) * 100
+function objectiveFunction(text, genome, keyboardData, baselineScore)
+    objective = (baselineObjectiveFunction(text, genome, keyboardData) / baselineScore - 1) * 100
     return objective
 end
 
-const keyboardColorMap = computeKeyboardColorMap(charFrequency)
+const (; fingerEffort, rowEffort, textStats, effortWeighting) = dataStats
+const (; charHistogram, charFrequency, usedChars) = textStats
+
+const (;
+    keyboardColorMap,
+    layoutMap,
+    keyMap,
+    noCharKeyMap,
+    fixedKeys,
+    fingersHome,
+    handFingers,
+    numFingers,
+    numKeys,
+    numLayoutKeys,
+    numMovableKeys
+) = keyboardData
+
+const xMoveMultiplier = 2.5 # If 1, the weight of moving around x axis is same as moving in y axis. This effort is because lateral movements are worse
+const distanceEffort = 1 # Always positive. At 2, distance penalty is squared
+const doubleFingerEffort = 1 # Positive prevents using same finger more than once
+const singleHandEffort = 1 # Positive prefers double hand, negative prefers single hand
+const rightHandEffort = 1 # Right hand also uses the mouse
+
+const temperatureKeyShuffleMultiplier = 0.01 # Is multiplied by temperature to give number of keys shuffled (for 0.01 and t=1000, 10 keys shuffled)
 
 # Has probability 0.5 of changing current genome to best when starting new epoch
 # Has probability e^(-delta/t) of changing current genome to a worse when not the best genome
@@ -138,8 +134,8 @@ function runSA(;
     lk,
     rng,
     text,
-    layoutMap,
-    keyboardColorMap,
+    keyboardData,
+    temperatureKeyShuffleMultiplier,
     baselineGenome,
     genomeGenerator,
     temperature,
@@ -152,17 +148,17 @@ function runSA(;
 
     verbose && println("Running code...")
     verbose && print("Calculating raw baseline: ")
-    baselineScore = baselineObjectiveFunction(text, baselineGenome, layoutMap)
+    baselineScore = baselineObjectiveFunction(text, baselineGenome, keyboardData)
     verbose && println(baselineScore)
     verbose && println("From here everything is reletive with + % worse and - % better than this baseline \n Note that best layout is being saved as a png at each step. Kill program when satisfied.")
 
     currentGenome = genomeGenerator()
-    currentObjective = objectiveFunction(text, currentGenome, layoutMap, baselineScore)
+    currentObjective = objectiveFunction(text, currentGenome, keyboardData, baselineScore)
 
     bestGenome = currentGenome
     bestObjective = currentObjective
 
-    Threads.@spawn :interactive drawKeyboard(bestGenome, "data/result/$runid - first.png", layoutMap, keyboardColorMap, lk)
+    Threads.@spawn :interactive drawKeyboard(bestGenome, "data/result/$runid - first.png", keyboardData, lk)
 
     baseTemp = temperature
     for iteration in 1:num_iterations
@@ -171,19 +167,20 @@ function runSA(;
         end
 
         # Create new genome
-        newGenome = shuffleGenomeKeyMap(rng, currentGenome, fixedKeys, temperature)
+        newGenome = shuffleGenomeKeyMap(rng, currentGenome, fixedKeys, floor(Int, temperature * temperatureKeyShuffleMultiplier))
 
         # Asess
-        newObjective = objectiveFunction(text, newGenome, layoutMap, baselineScore)
+        newObjective = objectiveFunction(text, newGenome, keyboardData, baselineScore)
         delta = newObjective - currentObjective
 
+        srid = lpad(runid, 3, " ")
         sit = lpad(iteration, 6, " ")
         stemp = lpad(round(temperature, digits=2), 7, " ")
         sobj = lpad(round(bestObjective, digits=3), 8, " ")
         snobj = lpad(round(newObjective, digits=3), 8, " ")
-        updateLine = "Iteration: $sit, temp: $stemp, best obj: $sobj, new obj: $snobj"
+        updateLine = "Thread: $srid, Iteration: $sit, temp: $stemp, best obj: $sobj, new obj: $snobj"
 
-        verbose && println(updateLine)
+        (verbose || iteration % 100 == 1) && println(updateLine)
 
         if delta < 0
             # If new keyboard is better (less objective is better)
@@ -198,7 +195,7 @@ function runSA(;
                 bestObjective = newObjective
 
                 verbose && println("(new best, text being saved)")
-                Threads.@spawn :interactive drawKeyboard(bestGenome, "data/result$runid/$iteration.png", layoutMap, keyboardColorMap, lk)
+                Threads.@spawn :interactive drawKeyboard(bestGenome, "data/result$runid/$iteration.png", keyboardData, lk)
                 # open("data/result/bestGenomes.txt", "a") do io
                 #     print(io, iteration, ":")
                 #     for c in bestGenome
@@ -216,7 +213,7 @@ function runSA(;
 
         # Starting new epoch
         if iteration > epoch && (iteration % epoch == 1)
-            temperature = baseTemp * coolingRate^floor(Int64, iteration / epoch)
+            temperature = baseTemp * coolingRate^floor(Int, iteration / epoch)
 
             # Changes genome with probability 0.5
             if rand(rng) < 0.5
@@ -226,7 +223,7 @@ function runSA(;
         end
     end
 
-    Threads.@spawn :interactive drawKeyboard(bestGenome, "data/result/$runid - final.png", layoutMap, keyboardColorMap, lk)
+    Threads.@spawn :interactive drawKeyboard(bestGenome, "data/result/$runid - final.png", keyboardData, lk)
 
     return bestGenome, bestObjective
 end
@@ -235,7 +232,7 @@ const nts = Threads.nthreads()
 
 seed = 563622
 const rng = StableRNGs.LehmerRNG(seed)
-const rngs = StableRNGs.LehmerRNG.(rand(rng, 1:typemax(Int64), nts))
+const rngs = StableRNGs.LehmerRNG.(rand(rng, 1:typemax(Int), nts))
 genomes = Dict{Any,Any}()
 objectives = Dict{Any,Any}()
 
@@ -260,11 +257,11 @@ objectives = Dict{Any,Any}()
                 runid=tid,
                 lk=lk,
                 rng=rngs[i],
-                text=textdata,
-                layoutMap=defaultLayoutMap,
-                keyboardColorMap=keyboardColorMap,
-                baselineGenome=keyMapDict,
-                genomeGenerator=() -> shuffleKeyMap(rngs[i], keyMapDict, fixedKeys),
+                text=textData,
+                keyboardData=keyboardData,
+                temperatureKeyShuffleMultiplier=temperatureKeyShuffleMultiplier,
+                baselineGenome=keyMap,
+                genomeGenerator=() -> shuffleKeyMap(rngs[i], keyMap, fixedKeys),
                 #genomeGenerator=() -> keyMapDict,
                 temperature=t,
                 epoch=e,
@@ -282,5 +279,5 @@ objectives = Dict{Any,Any}()
     bestI, bestG, bestO = reduce(((i, g, o), (i2, g2, o2)) -> o < o2 ? (i, g, o) : (i2, g2, o2), ((i, genomes[i], objectives[i]) for i in filter(x -> haskey(genomes, x), 1:nts)))
 
     println("Best overall: $bestI; Score: $bestO")
-    drawKeyboard(bestG, "data/result/bestOverall - $bestI.png", defaultLayoutMap, keyboardColorMap)
+    drawKeyboard(bestG, "data/result/bestOverall - $bestI.png", keyboardData)
 end

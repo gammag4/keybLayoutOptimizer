@@ -16,7 +16,8 @@ function computeKeyboardColorMap(charFrequency)
     return Dict(k => normFreqToHSV(log2(1 + (v - minf) / (maxf - minf))) for (k, v) in charFrequency)
 end
 
-function drawKey(key, letter, keyboardColorMap)
+function drawKey(key, letter, keyboardData)
+    (; keyboardColorMap, numFingers) = keyboardData
     (x, y, w), (finger, home), row = key
     h = 1 # TODO Add h to layout
     color = get(keyboardColorMap, lowercase(letter), HSV(220, 0.2, 1))
@@ -35,27 +36,26 @@ function drawKey(key, letter, keyboardColorMap)
     annotate!(x, y, text(uppercase(strip(string(letter == '\\' ? '|' : letter))), :black, :center, 8))
 end
 
-function drawKeyboard(myGenome, filepath, layoutMap, keyboardColorMap)
+function drawKeyboard(genome, filepath, keyboardData)
+    (; layoutMap, noCharKeyMap) = keyboardData
+
     plot(axis=([], false))
 
-    for (letter, i) in myGenome
-        drawKey(layoutMap[i], letter)
+    for (letter, i) in genome
+        drawKey(layoutMap[i], letter, keyboardData)
     end
 
-    for (name, i) in noCharKeys
-        drawKey(layoutMap[i], name)
+    for (name, i) in noCharKeyMap
+        drawKey(layoutMap[i], name, keyboardData)
     end
 
     plot!(aspect_ratio=1, legend=false)
     savefig(filepath)
 end
 
-function drawKeyboard(genome, filepath, layoutMap, keyboardColorMap, lk)
-    if isnothing(lk)
-        lk = ReentrantLock()
-    end
+function drawKeyboard(genome, filepath, keyboardData, lk)
     lock(lk) do
-        drawKeyboard(genome, filepath, layoutMap, keyboardColorMap)
+        drawKeyboard(genome, filepath, keyboardData)
     end
 end
 
