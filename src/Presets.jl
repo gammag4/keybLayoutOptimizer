@@ -8,22 +8,17 @@ using DrawKeyboard
 
 # TODO Turn all this into a function
 
-textpath = "data/dataset.txt" # File to save/get text data
+const textpath = "data/dataset.txt" # File to save/get text data
 
+# TODO Move this
 # Processing data
 mkpath("data/result")
 processDataFolderIntoTextFile("data/raw_dataset", textpath, overwrite=false, verbose=true)
 
 # Getting data
-textData = open(io -> read(io, String), textpath, "r")
+const textData = open(io -> read(io, String), textpath, "r")
 
-const dataStats = computeStats(
-    text=textData,
-    fingersCPS=Vector{Float64}([5.5, 5.9, 6.3, 6.2, 6.4, 5.3, 7.0, 6.7, 5.2, 6.2]), # Tested by just pressing the home key of each finger
-    rowsCPS=Vector{Float64}([2.27, 3.07, 6.07, 2.93, 2.73, 2.67]), # Bottom to top, tested by bringing the pinky to the respective key and going back to the home key
-    effortWeighting=NTuple{6,Float64}((0.4, 1, 1, 0.8, 0.2, 0.15),), # dist, double finger, single hand, right hand, finger cps, row cps
-    #effortWeighting=(0.7917, 1, 0, 0, 0.4773, 0.00), # dist, double finger, single hand, right hand, finger cps, row cps
-)
+const randomSeed = 563622
 
 const fingersHome = [25, 26, 27, 28, 4, 4, 31, 32, 33, 34]
 
@@ -53,6 +48,7 @@ const layoutMap = layoutGenerator(
     fingersHome=fingersHome
 )
 
+# TODO Split layout into list of keys with same size so that they can be shuffled
 const keyMap = keyMapGenerator(
     keys=[" ", "zxcvbnm,./", "asdfghjkl;'\n", "\tqwertyuiop[]\\", "`1234567890-="], # Rows of the keyboard layout that are actual characters
     startIndices=[4, 12, 25, 38, 53] # Indices of keys of the first key of each row in the layout map
@@ -62,10 +58,6 @@ const noCharKeyMap = keyMapGenerator(
     keys=[["ctrl", "win", "alt", "space", "agr", "fn", "rctl", "lf", "dn", "rt"], ["shift"], ["rshift", "up"], ["caps"], ["enter", "del", "tab"], ["ins"], ["bsp", ""], ["esc"], ["f$i" for i in 1:12], ["psc"]],
     startIndices=[1, 11, 22, 24, 36, 52, 66, 68, 69, 81]
 )
-
-const (; textStats) = dataStats
-const (; charFrequency) = textStats
-const keyboardColorMap = computeKeyboardColorMap(charFrequency)
 
 const fixedKeys = collect("1234567890\t\n\\ ") # Keys that will not change on shuffle
 #const fixedKeys = collect("\t\n ") # Numbers also change
@@ -78,6 +70,18 @@ const numKeys = length(keyMap)
 const numLayoutKeys = length(layoutMap)
 const numFixedKeys = length(fixedKeyMap)
 const numMovableKeys = length(movableKeyMap)
+
+const dataStats = computeStats(
+    text=textData,
+    fingersCPS=Vector{Float64}([5.5, 5.9, 6.3, 6.2, 6.4, 5.3, 7.0, 6.7, 5.2, 6.2]), # Tested by just pressing the home key of each finger
+    rowsCPS=Vector{Float64}([2.27, 3.07, 6.07, 2.93, 2.73, 2.67]), # Bottom to top, tested by bringing the pinky to the respective key and going back to the home key
+    effortWeighting=NTuple{6,Float64}((0.4, 1, 1, 0.8, 0.2, 0.15),), # dist, double finger, single hand, right hand, finger cps, row cps
+    #effortWeighting=(0.7917, 1, 0, 0, 0.4773, 0.00), # dist, double finger, single hand, right hand, finger cps, row cps
+)
+
+const (; textStats) = dataStats
+const (; charFrequency) = textStats
+const keyboardColorMap = computeKeyboardColorMap(charFrequency)
 
 const rewardArgs = (
     xMoveMultiplier=4, # If 1, the weight of moving around x axis is same as moving in y axis. This effort is because lateral movements are worse
@@ -151,6 +155,6 @@ const keyboardData = KeyboardData(
     numMovableKeys,
 )
 
-export textData, dataStats, rewardArgs, algorithmArgs, frequencyKeyboardArgs, keyboardData, drawKeyboard
+export randomSeed, textData, dataStats, rewardArgs, algorithmArgs, frequencyKeyboardArgs, keyboardData, drawKeyboard
 
 end

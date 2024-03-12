@@ -7,12 +7,13 @@ using Presets
 using Utils
 using DrawKeyboard
 
+const (; xBias, distanceBias, leftHandBias, rowCPSBias, keyboardSize) = frequencyKeyboardArgs
+
 # TODO Optimize code here: Change <something> in <list> to dictionary haskey or something
 
 function objective(key, dataStats, keyboardData)
     (; fingersCPS, rowsCPS) = dataStats
     (; fingersHome, layoutMap, handFingers) = keyboardData
-    (; xBias, distanceBias, leftHandBias, rowCPSBias, keyboardSize) = frequencyKeyboardArgs
 
     (x, y, _), (finger, _), row = layoutMap[key]
     home = fingersHome[finger]

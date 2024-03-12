@@ -12,6 +12,7 @@ using Presets
 using Genome
 using FrequencyKeyboard
 using DrawKeyboard
+using KeyboardObjective
 
 const (; fingerEffort, rowEffort, textStats, effortWeighting) = dataStats
 const (; charHistogram, charFrequency, usedChars) = textStats
@@ -31,14 +32,6 @@ const (;
 ) = keyboardData
 
 const (;
-    xMoveMultiplier,
-    distanceEffort,
-    doubleFingerEffort,
-    singleHandEffort,
-    rightHandEffort,
-) = rewardArgs
-
-const (;
     temperature,
     epoch,
     numIterations,
@@ -46,100 +39,6 @@ const (;
     maxIterations,
     temperatureKeyShuffleMultiplier
 ) = algorithmArgs
-
-function doKeypress(keyPress, fingerData, oldFinger, oldHand, keyboardData)
-    (; layoutMap, numFingers, handFingers) = keyboardData
-    (x, y, _), (finger, _), row = layoutMap[keyPress]
-    currentHand = handFingers[finger]
-    homeX, homeY, currentX, currentY, objectiveCounter = fingerData[finger]
-
-    # Sets other fingers back to home position
-    for fingerID in 1:numFingers
-        hx, hy, _, _, _ = fingerData[fingerID]
-
-        fingerData[fingerID][3] = hx
-        fingerData[fingerID][4] = hy
-    end
-
-    fingerData[finger][3] = currentX
-    fingerData[finger][4] = currentY
-
-    dx, dy = x - currentX, y - currentY
-    distance = sqrt((dx * xMoveMultiplier)^2 + dy^2)
-
-    distancePenalty = (distance + 1)^distanceEffort - 1 # This way, distanceEffort always increases even if in [0, 1]
-
-    # Double finger
-    doubleFingerPenalty = 0
-    if finger == oldFinger && distance > 0.01
-        doubleFingerPenalty = doubleFingerEffort
-    end
-
-    # Single hand
-    singleHandPenalty = 0
-    if currentHand == oldHand
-        singleHandPenalty = singleHandEffort
-    end
-
-    # Right hand
-    rightHandPenalty = 0
-    if currentHand == 2
-        rightHandPenalty = rightHandEffort
-    end
-
-    fingerPenalty = fingerEffort[finger]
-    rowPenalty = rowEffort[row]
-
-    # Combined weighting
-    penalties = (distancePenalty, doubleFingerPenalty, singleHandPenalty, rightHandPenalty, fingerPenalty, rowPenalty) .* effortWeighting
-    #println(penalties)
-    newObjective = objectiveCounter + sum(penalties)
-
-    fingerData[finger][3] = x
-    fingerData[finger][4] = y
-    fingerData[finger][5] = newObjective
-
-    return fingerData, finger, currentHand
-end
-
-function baselineObjectiveFunction(text, genome, keyboardData)
-    (; layoutMap, numFingers) = keyboardData
-    # homeX, homeY, currentX, currentY, objectiveCounter
-    fingerData = repeat([zeros(5)], 10)
-
-    for i in 1:numFingers
-        (x, y, _), (finger, _), _ = layoutMap[i]
-        fingerData[finger][1:4] = [x, y, x, y]
-    end
-
-    objective = 0
-    oldFinger = 0
-    oldHand = 0
-
-    for currentCharacter in text
-        # determine keypress (nothing if there is no key)
-        keyPress = get(genome, currentCharacter, nothing)
-
-        if isnothing(keyPress)
-            continue
-        end
-
-        # do keypress
-        fingerData, oldFinger, oldHand = doKeypress(keyPress, fingerData, oldFinger, oldHand, keyboardData)
-    end
-
-    # calculate and return objective
-    objective = sum(map(x -> x[5], fingerData))
-    return objective
-end
-
-function objectiveFunction(text, genome, keyboardData, baselineScore)
-    objective = (baselineObjectiveFunction(text, genome, keyboardData) / baselineScore - 1) * 100
-    return objective
-end
-
-genome, freqKeyMap = createFrequencyGenome(dataStats, keyboardData)
-drawFrequencyKeyboard("data/frequencyKeyboard.png", genome, freqKeyMap, keyboardData, useFrequencyColorMap=false)
 
 # Has probability 0.5 of changing current genome to best when starting new epoch
 # Has probability e^(-delta/t) of changing current genome to a worse when not the best genome
@@ -162,7 +61,7 @@ function runSA(;
 
     verbose && println("Running code...")
     verbose && print("Calculating raw baseline: ")
-    baselineScore = baselineObjectiveFunction(text, baselineGenome, keyboardData)
+    baselineScore = objectiveFunction(text, baselineGenome, keyboardData)
     verbose && println(baselineScore)
     verbose && println("From here everything is reletive with + % worse and - % better than this baseline \n Note that best layout is being saved as a png at each step. Kill program when satisfied.")
 
@@ -248,10 +147,12 @@ function runSA(;
     return bestGenome, bestObjective
 end
 
+frequencyGenome, freqKeyMap = createFrequencyGenome(dataStats, keyboardData)
+drawFrequencyKeyboard("data/frequencyKeyboard.png", frequencyGenome, freqKeyMap, keyboardData, useFrequencyColorMap=false)
+
 const nts = Threads.nthreads()
 
-seed = 563622
-const rng = StableRNGs.LehmerRNG(seed)
+const rng = StableRNGs.LehmerRNG(randomSeed)
 const rngs = StableRNGs.LehmerRNG.(rand(rng, 1:typemax(Int), nts))
 genomes = Dict{Any,Any}()
 objectives = Dict{Any,Any}()
@@ -273,8 +174,8 @@ objectives = Dict{Any,Any}()
                 text=textData,
                 keyboardData=keyboardData,
                 baselineGenome=keyMap,
-                genomeGenerator=() -> shuffleKeyMap(rngs[i], keyMap, fixedKeys),
-                #genomeGenerator=() -> keyMapDict,
+                #genomeGenerator=() -> shuffleKeyMap(rngs[i], keyMap, fixedKeys),
+                genomeGenerator=() -> frequencyGenome,
                 temperature=temperature,
                 epoch=epoch,
                 coolingRate=coolingRate,
