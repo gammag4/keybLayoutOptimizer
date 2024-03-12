@@ -102,6 +102,15 @@ const algorithmArgs = (
     temperatureKeyShuffleMultiplier=0.01 # Is multiplied by temperature to give number of keys shuffled (for 0.01 and t=1000, 10 keys shuffled)
 )
 
+# [0,1], 0.5 is equal for both
+const frequencyKeyboardArgs = (
+    xBias=0.7,
+    distanceBias=0.3,
+    leftHandBias=0.53,
+    rowCPSBias=(1, 1.3, 0.8, 1, 1, 1),
+    keyboardSize=16,
+)
+
 using Colors
 
 struct KeyboardData
@@ -142,6 +151,6 @@ const keyboardData = KeyboardData(
     numMovableKeys,
 )
 
-export textData, dataStats, rewardArgs, algorithmArgs, keyboardData, drawKeyboard
+export textData, dataStats, rewardArgs, algorithmArgs, frequencyKeyboardArgs, keyboardData, drawKeyboard
 
 end

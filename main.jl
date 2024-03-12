@@ -138,6 +138,9 @@ function objectiveFunction(text, genome, keyboardData, baselineScore)
     return objective
 end
 
+genome, freqKeyMap = createFrequencyGenome(dataStats, keyboardData)
+drawFrequencyKeyboard("data/frequencyKeyboard.png", genome, freqKeyMap, keyboardData, useFrequencyColorMap=false)
+
 # Has probability 0.5 of changing current genome to best when starting new epoch
 # Has probability e^(-delta/t) of changing current genome to a worse when not the best genome
 function runSA(;
@@ -257,7 +260,7 @@ objectives = Dict{Any,Any}()
 # Run julia --threads=<num threads your processor can run -1>,1 --project=. main.jl
 # Example for 12 core processor, 2 threads per core, total 24 threads: julia --threads=23,1 --project=. main.jl
 # Genomes are keymaps
-@time begin
+@btime begin
     @sync begin
         lk = ReentrantLock()
         Threads.@threads :static for i in 1:nts
