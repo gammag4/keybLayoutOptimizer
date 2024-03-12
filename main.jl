@@ -161,65 +161,71 @@ function runSA(;
     Threads.@spawn :interactive drawKeyboard(bestGenome, "data/result/$runid - first.png", keyboardData, lk)
 
     baseTemp = temperature
-    for iteration in 1:num_iterations
-        if temperature ≤ 1
-            break
-        end
-
-        # Create new genome
-        newGenome = shuffleGenomeKeyMap(rng, currentGenome, fixedKeys, floor(Int, temperature * temperatureKeyShuffleMultiplier))
-
-        # Asess
-        newObjective = objectiveFunction(text, newGenome, keyboardData, baselineScore)
-        delta = newObjective - currentObjective
-
-        srid = lpad(runid, 3, " ")
-        sit = lpad(iteration, 6, " ")
-        stemp = lpad(round(temperature, digits=2), 7, " ")
-        sobj = lpad(round(bestObjective, digits=3), 8, " ")
-        snobj = lpad(round(newObjective, digits=3), 8, " ")
-        updateLine = "Thread: $srid, Iteration: $sit, temp: $stemp, best obj: $sobj, new obj: $snobj"
-
-        (verbose || iteration % 100 == 1) && println(updateLine)
-
-        if delta < 0
-            # If new keyboard is better (less objective is better)
-
-            currentGenome = newGenome
-            currentObjective = newObjective
-
-            open(f -> write(f, updateLine, "\n"), "data/result/iterationScores$runid.txt", "a")
-
-            if newObjective < bestObjective
-                bestGenome = newGenome
-                bestObjective = newObjective
-
-                verbose && println("(new best, text being saved)")
-                Threads.@spawn :interactive drawKeyboard(bestGenome, "data/result$runid/$iteration.png", keyboardData, lk)
-                # open("data/result/bestGenomes.txt", "a") do io
-                #     print(io, iteration, ":")
-                #     for c in bestGenome
-                #         print(io, c)
-                #     end
-                #     println(io)
-                # end
+    try
+        for iteration in 1:num_iterations
+            if temperature ≤ 1
+                break
             end
-        elseif exp(-delta / temperature) > rand(rng)
-            # Changes genome with probability e^(-delta/t)
 
-            currentGenome = newGenome
-            currentObjective = newObjective
-        end
+            # Create new genome
+            newGenome = shuffleGenomeKeyMap(rng, currentGenome, fixedKeys, floor(Int, temperature * temperatureKeyShuffleMultiplier))
 
-        # Starting new epoch
-        if iteration > epoch && (iteration % epoch == 1)
-            temperature = baseTemp * coolingRate^floor(Int, iteration / epoch)
+            # Asess
+            newObjective = objectiveFunction(text, newGenome, keyboardData, baselineScore)
+            delta = newObjective - currentObjective
 
-            # Changes genome with probability 0.5
-            if rand(rng) < 0.5
-                currentGenome = bestGenome
-                currentObjective = bestObjective
+            srid = lpad(runid, 3, " ")
+            sit = lpad(iteration, 6, " ")
+            stemp = lpad(round(temperature, digits=2), 7, " ")
+            sobj = lpad(round(bestObjective, digits=3), 8, " ")
+            snobj = lpad(round(newObjective, digits=3), 8, " ")
+            updateLine = "Thread: $srid, Iteration: $sit, temp: $stemp, best obj: $sobj, new obj: $snobj"
+
+            (verbose || iteration % 100 == 1) && println(updateLine)
+
+            if delta < 0
+                # If new keyboard is better (less objective is better)
+
+                currentGenome = newGenome
+                currentObjective = newObjective
+
+                open(f -> write(f, updateLine, "\n"), "data/result/iterationScores$runid.txt", "a")
+
+                if newObjective < bestObjective
+                    bestGenome = newGenome
+                    bestObjective = newObjective
+
+                    verbose && println("(new best, text being saved)")
+                    Threads.@spawn :interactive drawKeyboard(bestGenome, "data/result$runid/$iteration.png", keyboardData, lk)
+                    # open("data/result/bestGenomes.txt", "a") do io
+                    #     print(io, iteration, ":")
+                    #     for c in bestGenome
+                    #         print(io, c)
+                    #     end
+                    #     println(io)
+                    # end
+                end
+            elseif exp(-delta / temperature) > rand(rng)
+                # Changes genome with probability e^(-delta/t)
+
+                currentGenome = newGenome
+                currentObjective = newObjective
             end
+
+            # Starting new epoch
+            if iteration > epoch && (iteration % epoch == 1)
+                temperature = baseTemp * coolingRate^floor(Int, iteration / epoch)
+
+                # Changes genome with probability 0.5
+                if rand(rng) < 0.5
+                    currentGenome = bestGenome
+                    currentObjective = bestObjective
+                end
+            end
+        end
+    catch e
+        if !(e isa InterruptException)
+            rethrow(e)
         end
     end
 
@@ -242,9 +248,9 @@ objectives = Dict{Any,Any}()
 # Genomes are keymaps
 @time begin
     @sync begin
+        lk = ReentrantLock()
         Threads.@threads :static for i in 1:nts
             tid = Threads.threadid()
-            lk = ReentrantLock()
 
             # Total number of iterations will be -epoch * log(t) / log(coolingRate)
             # Compute cooling rate = 1/(t)^(epoch/i)
@@ -276,7 +282,7 @@ objectives = Dict{Any,Any}()
         end
     end
 
-    bestI, bestG, bestO = reduce(((i, g, o), (i2, g2, o2)) -> o < o2 ? (i, g, o) : (i2, g2, o2), ((i, genomes[i], objectives[i]) for i in filter(x -> haskey(genomes, x), 1:nts)))
+    bestI, bestG, bestO = reduce(((i, g, o), (i2, g2, o2)) -> o < o2 ? (i, g, o) : (i2, g2, o2), ((i, genomes[i], objectives[i]) for i in filter(x -> haskey(genomes, x), eachindex(genomes))))
 
     println("Best overall: $bestI; Score: $bestO")
     drawKeyboard(bestG, "data/result/bestOverall - $bestI.png", keyboardData)
