@@ -11,7 +11,8 @@ using DrawKeyboard
 const textpath = "data/dataset.txt" # File to save/get text data
 
 # TODO Move this
-# Creating folders
+# Creating folders and removing old data
+map(i -> rm("data/$i", recursive=true), filter(s -> occursin(r"result", s), readdir("data/")))
 mkpath("data/result/first")
 mkpath("data/result/final")
 mkpath("data/lastRuns")
