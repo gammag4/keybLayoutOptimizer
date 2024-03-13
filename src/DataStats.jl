@@ -52,14 +52,12 @@ struct DataStatsType
     fingerEffort::Vector{Float64}
     rowEffort::Vector{Float64}
     textStats::TextStats
-    effortWeighting::NTuple{6,Float64}
 end
 
 function computeStats(;
     text::String,
     fingersCPS::Vector{Float64},
     rowsCPS::Vector{Float64},
-    effortWeighting::NTuple{6,Float64},
 )
     return DataStatsType(
         fingersCPS,
@@ -67,7 +65,6 @@ function computeStats(;
         computeEffort(fingersCPS),
         computeEffort(rowsCPS),
         computeTextStats(text),
-        effortWeighting
     )
 end
 

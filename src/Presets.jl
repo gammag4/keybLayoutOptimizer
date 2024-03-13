@@ -12,13 +12,14 @@ const textpath = "data/dataset.txt" # File to save/get text data
 
 # TODO Move this
 # Creating folders
-mkpath("data/result")
+mkpath("data/result/first")
+mkpath("data/result/final")
 mkpath("data/lastRuns")
 const runId = 1 + last(sort(vcat([0], collect(map(i -> parse(Int, replace(i, r"[^0-9]" => "")), readdir("data/lastRuns/"))))))
 
 # TODO Move this
 # Processing data
-processDataFolderIntoTextFile("data/raw_dataset", textpath, overwrite=false, verbose=true)
+processDataFolderIntoTextFile("_raw_dataset", textpath, overwrite=false, verbose=true)
 
 # Getting data
 const textData = open(io -> read(io, String), textpath, "r")
@@ -26,6 +27,17 @@ const textData = open(io -> read(io, String), textpath, "r")
 const randomSeed = 563622
 
 const fingersHome = [25, 26, 27, 28, 4, 4, 31, 32, 33, 34]
+
+const dataStats = computeStats(
+    text=textData,
+    fingersCPS=Vector{Float64}([5.5, 5.9, 6.3, 6.2, 6.4, 5.3, 7.0, 6.7, 5.2, 6.2]), # Tested by just pressing the home key of each finger
+    rowsCPS=Vector{Float64}([2.27, 3.07, 6.07, 2.93, 2.73, 2.67]), # Bottom to top, tested by bringing the pinky to the respective key and going back to the home key
+    #effortWeighting=(0.7917, 1, 0, 0, 0.4773, 0.00), # dist, double finger, single hand, right hand, finger cps, row cps
+)
+
+const (; textStats) = dataStats
+const (; charFrequency) = textStats
+const keyboardColorMap = computeKeyboardColorMap(charFrequency)
 
 # Keychron Q1 Pro layout
 const layoutMap = layoutGenerator(
@@ -76,19 +88,8 @@ const numLayoutKeys = length(layoutMap)
 const numFixedKeys = length(fixedKeyMap)
 const numMovableKeys = length(movableKeyMap)
 
-const dataStats = computeStats(
-    text=textData,
-    fingersCPS=Vector{Float64}([5.5, 5.9, 6.3, 6.2, 6.4, 5.3, 7.0, 6.7, 5.2, 6.2]), # Tested by just pressing the home key of each finger
-    rowsCPS=Vector{Float64}([2.27, 3.07, 6.07, 2.93, 2.73, 2.67]), # Bottom to top, tested by bringing the pinky to the respective key and going back to the home key
-    effortWeighting=NTuple{6,Float64}((0.4, 1, 1, 0.8, 0.2, 0.15),), # dist, double finger, single hand, right hand, finger cps, row cps
-    #effortWeighting=(0.7917, 1, 0, 0, 0.4773, 0.00), # dist, double finger, single hand, right hand, finger cps, row cps
-)
-
-const (; textStats) = dataStats
-const (; charFrequency) = textStats
-const keyboardColorMap = computeKeyboardColorMap(charFrequency)
-
 const rewardArgs = (
+    effortWeighting=NTuple{6,Float64}((0.7, 1, 1, 0.4, 0.2, 0.15)), # dist, double finger, single hand, right hand, finger cps, row cps
     xMoveMultiplier=4, # If 1, the weight of moving around x axis is same as moving in y axis. This effort is because lateral movements are worse
     distanceEffort=1, # Always positive. At 2, distance penalty is squared
     doubleFingerEffort=1, # Positive prevents using same finger more than once

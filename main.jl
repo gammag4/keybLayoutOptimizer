@@ -15,7 +15,7 @@ using FrequencyKeyboard
 using DrawKeyboard
 using KeyboardObjective
 
-const (; fingerEffort, rowEffort, textStats, effortWeighting) = dataStats
+const (; fingerEffort, rowEffort, textStats) = dataStats
 const (; charHistogram, charFrequency, usedChars) = textStats
 
 const (;
@@ -44,7 +44,7 @@ const (;
 # Has probability 0.5 of changing current genome to best when starting new epoch
 # Has probability e^(-delta/t) of changing current genome to a worse when not the best genome
 function runSA(;
-    runid,
+    threadId,
     lk,
     rng,
     text,
@@ -58,7 +58,7 @@ function runSA(;
     temperatureKeyShuffleMultiplier,
     verbose,
 )
-    mkpath("data/result$runid")
+    mkpath("data/result$threadId")
 
     verbose && println("Running code...")
     verbose && print("Calculating raw baseline: ")
@@ -72,7 +72,7 @@ function runSA(;
     bestGenome = currentGenome
     bestObjective = currentObjective
 
-    Threads.@spawn :interactive drawKeyboard(bestGenome, "data/result/$runid - first.png", keyboardData, lk)
+    Threads.@spawn :interactive drawKeyboard(bestGenome, "data/result/first/$threadId.png", keyboardData, lk)
 
     baseTemp = temperature
     try
@@ -88,7 +88,7 @@ function runSA(;
             newObjective = objectiveFunction(text, newGenome, keyboardData, baselineScore)
             delta = newObjective - currentObjective
 
-            srid = lpad(runid, 3, " ")
+            srid = lpad(threadId, 3, " ")
             sit = lpad(iteration, 6, " ")
             stemp = lpad(round(temperature, digits=2), 7, " ")
             sobj = lpad(round(bestObjective, digits=3), 8, " ")
@@ -103,14 +103,14 @@ function runSA(;
                 currentGenome = newGenome
                 currentObjective = newObjective
 
-                open(f -> write(f, updateLine, "\n"), "data/result/iterationScores$runid.txt", "a")
+                open(f -> write(f, updateLine, "\n"), "data/result/iterationScores$threadId.txt", "a")
 
                 if newObjective < bestObjective
                     bestGenome = newGenome
                     bestObjective = newObjective
 
                     verbose && println("(new best, text being saved)")
-                    Threads.@spawn :interactive drawKeyboard(bestGenome, "data/result$runid/$iteration.png", keyboardData, lk)
+                    Threads.@spawn :interactive drawKeyboard(bestGenome, "data/result$threadId/$iteration.png", keyboardData, lk)
                     # open("data/result/bestGenomes.txt", "a") do io
                     #     print(io, iteration, ":")
                     #     for c in bestGenome
@@ -143,7 +143,7 @@ function runSA(;
         end
     end
 
-    Threads.@spawn :interactive drawKeyboard(bestGenome, "data/result/$runid - final.png", keyboardData, lk)
+    Threads.@spawn :interactive drawKeyboard(bestGenome, "data/result/final/$threadId.png", keyboardData, lk)
 
     return bestGenome, bestObjective
 end
@@ -169,7 +169,7 @@ objectives = Dict{Any,Any}()
             tid = Threads.threadid()
 
             genome, objective = runSA(
-                runid=tid,
+                threadId=tid,
                 lk=lk,
                 rng=rngs[i],
                 text=textData,

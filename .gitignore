@@ -1,3 +1,4 @@
 *.png
 *.txt
 /data/*
+_raw_dataset/

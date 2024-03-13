@@ -2,9 +2,10 @@ module KeyboardObjective
 
 using Presets
 
-const (; fingerEffort, rowEffort, textStats, effortWeighting) = dataStats
+const (; fingerEffort, rowEffort, textStats) = dataStats
 
 const (;
+    effortWeighting,
     xMoveMultiplier,
     distanceEffort,
     doubleFingerEffort,
