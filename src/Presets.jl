@@ -11,8 +11,13 @@ using DrawKeyboard
 const textpath = "data/dataset.txt" # File to save/get text data
 
 # TODO Move this
-# Processing data
+# Creating folders
 mkpath("data/result")
+mkpath("data/lastRuns")
+const runId = 1 + last(sort(vcat([0], collect(map(i -> parse(Int, replace(i, r"[^0-9]" => "")), readdir("data/lastRuns/"))))))
+
+# TODO Move this
+# Processing data
 processDataFolderIntoTextFile("data/raw_dataset", textpath, overwrite=false, verbose=true)
 
 # Getting data
@@ -155,6 +160,6 @@ const keyboardData = KeyboardData(
     numMovableKeys,
 )
 
-export randomSeed, textData, dataStats, rewardArgs, algorithmArgs, frequencyKeyboardArgs, keyboardData, drawKeyboard
+export runId, randomSeed, textData, dataStats, rewardArgs, algorithmArgs, frequencyKeyboardArgs, keyboardData, drawKeyboard
 
 end

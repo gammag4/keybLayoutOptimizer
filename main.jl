@@ -7,6 +7,7 @@ using Random, StableRNGs
 using .Threads
 using BenchmarkTools
 using Revise
+using Base.Filesystem
 
 using Presets
 using Genome
@@ -194,4 +195,6 @@ objectives = Dict{Any,Any}()
 
     println("Best overall: $bestI; Score: $bestO")
     drawKeyboard(bestG, "data/result/bestOverall - $bestI.png", keyboardData)
+
+    cptree("data/result", "data/lastRuns/$runId")
 end
