@@ -27,4 +27,10 @@ mergeVal(a, b) = isnothing(b) ? a : b
 
 mergeIter(v...) = reduce((v1, v2) -> (mergeVal(a, b) for (a, b) in zip(v1, v2)), v)
 
+function dictToArray(d)
+    v = first(d)
+    res::Vector{typeof(v[2])} = [get(d, typeof(v[1])(i), v[2]) for i in 1:maximum(Int.(keys(d)))]
+    return res
+end
+
 end

@@ -14,12 +14,14 @@ include("src/Genome.jl")
 include("src/FrequencyKeyboard.jl")
 include("src/DrawKeyboard.jl")
 include("src/KeyboardObjective.jl")
+include("src/Utils.jl")
 
-using .Presets: runId, randomSeed, textData, dataStats, keyboardData, algorithmArgs
+using .Presets: runId, randomSeed, textData, dataStats, keyboardData, algorithmArgs, gpuArgs
 using .Genome: shuffleGenomeKeyMap
 using .FrequencyKeyboard: createFrequencyGenome, drawFrequencyKeyboard
 using .DrawKeyboard: drawKeyboard
 using .KeyboardObjective: objectiveFunction
+using .Utils: dictToArray
 
 const (; fingerEffort, rowEffort, textStats) = dataStats
 const (; charHistogram, charFrequency, usedChars) = textStats
@@ -60,12 +62,12 @@ function runSA(;
 
     verbose && println("Running code...")
     verbose && print("Calculating raw baseline: ")
-    baselineScore = objectiveFunction(text, baselineGenome, keyboardData)
+    baselineScore = objectiveFunction(baselineGenome, keyboardData, gpuArgs)
     verbose && println(baselineScore)
     verbose && println("From here everything is reletive with + % worse and - % better than this baseline \n Note that best layout is being saved as a png at each step. Kill program when satisfied.")
 
     currentGenome = genomeGenerator()
-    currentObjective = objectiveFunction(text, currentGenome, keyboardData, baselineScore)
+    currentObjective = objectiveFunction(currentGenome, keyboardData, gpuArgs, baselineScore)
 
     bestGenome = currentGenome
     bestObjective = currentObjective
@@ -83,7 +85,7 @@ function runSA(;
             newGenome = shuffleGenomeKeyMap(rng, currentGenome, fixedKeys, floor(Int, temperature * temperatureKeyShuffleMultiplier))
 
             # Asess
-            newObjective = objectiveFunction(text, newGenome, keyboardData, baselineScore)
+            newObjective = objectiveFunction(newGenome, keyboardData, gpuArgs, baselineScore)
             delta = newObjective - currentObjective
 
             srid = lpad(threadId, 3, " ")
@@ -108,7 +110,7 @@ function runSA(;
                     bestObjective = newObjective
 
                     verbose && println("(new best, text being saved)")
-                    @spawn :interactive drawKeyboard(bestGenome, "data/result$threadId/$iteration.png", keyboardData, lk)
+                    #@spawn :interactive drawKeyboard(bestGenome, "data/result$threadId/$iteration.png", keyboardData, lk)
                     # open("data/result/bestGenomes.txt", "a") do io
                     #     print(io, iteration, ":")
                     #     for c in bestGenome

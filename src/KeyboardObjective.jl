@@ -1,17 +1,20 @@
 module KeyboardObjective
 
-include("Presets.jl")
+using CUDA
 
-using .Presets: dataStats, rewardArgs
+include("Presets.jl")
+include("Utils.jl")
+
+using .Presets: dataStats, rewardArgs, gpuArgs, LayoutKey
+using .Utils: dictToArray
 
 export objectiveFunction
 
-const (; fingerEffort, rowEffort, textStats) = dataStats
+const (; fingerEffort, rowEffort) = dataStats
 
 const (;
     effortWeighting,
     xBias,
-    xMoveMultiplier,
     distanceEffort,
     doubleFingerEffort,
     singleHandEffort,
@@ -19,101 +22,81 @@ const (;
     keyboardSize,
 ) = rewardArgs
 
-const anskbs = 1 / keyboardSize
+const ansKbs = 1 / keyboardSize
 
-# TODO Compute rewards in bulk for all keys and use the whole data to compute and normalize rewards in the end
-# TODO Split dataset into array of smaller pieces and use it to parallelize,
-# creating also another array with the transitions between keys of the end of a piece and the start of another
-# Then, compute everything in bulk for the whole dataset and summarize all reward in the end from all data
+# TODO Compute rewards in bulk for all keys and use the whole data to compute, normalize rewards and compute all reward
 
-function doKeypress(keyPress, fingerData, oldFinger, oldHand, keyboardData)
-    (; layoutMap, numFingers, handFingers) = keyboardData
-    (x, y, _, _), (finger, _), row = layoutMap[keyPress]
-    currentHand = handFingers[finger]
-    homeX, homeY, currentX, currentY, objectiveCounter = fingerData[finger]
+function threadExec!(i::Int, text::CUDA.CuDeviceVector{Char,1}, out::CUDA.CuDeviceVector{Float64,1}, layoutMap::CUDA.CuDeviceVector{LayoutKey,1}, handFingers::CUDA.CuDeviceVector{Int,1}, genome::CUDA.CuDeviceVector{Int,1}, fingerEffort::CUDA.CuDeviceVector{Float64,1}, rowEffort::CUDA.CuDeviceVector{Float64,1})
+    # Thread memory:
+    # layoutMap, handfingers, text[i:i + 1], fingerEffort, rowEffort, genome, xBias, ansKbs
 
-    # Sets other fingers back to home position
-    for fingerID in 1:numFingers
-        hx, hy, _, _, _ = fingerData[fingerID]
+    char1 = text[i]
+    char2 = text[i+1]
+    key1 = genome[Int(char1)]
+    key2 = genome[Int(char2)]
+    (x1, y1, _, _), (finger1, _), _ = layoutMap[key1]
+    (x2, y2, _, _), (finger2, home), row = layoutMap[key2]
+    (homeX, homeY, _, _), _, _ = layoutMap[home]
+    hand1 = handFingers[finger1]
+    hand2 = handFingers[finger2]
 
-        fingerData[fingerID][3] = hx
-        fingerData[fingerID][4] = hy
-    end
+    # Old code would also consider distance to prevent counting when pressing same key as before,
+    # but this doesn't change the result of the algorithm, since it will just increase the objective of all genomes,
+    # hence, not changing the ordering of the set of possible genomes, so it is useless computation
+    sameFinger = finger1 == finger2 # Used same finger as previous
+    sameHand = hand1 == hand2 # Used same hand as previous
+    rightHand = hand2 == 2 # Used right hand
 
-    fingerData[finger][3] = currentX
-    fingerData[finger][4] = currentY
+    # If same finger, uses old position, else, uses home position (assuming fingers go home when you use another finger)
+    x1, y1 = sameFinger * x1 + (!sameFinger) * homeX, sameFinger * y1 + (!sameFinger) * homeY
 
-    dx, dy = x - currentX, y - currentY
-    distance = 1 - sqrt((dx * xBias * 2)^2 + (dy * (1 - xBias) * 2)^2) * anskbs
+    # Distance (normalized by keyboard size)
+    dx, dy = x2 - x1, y2 - y1
+    distance = 1 - sqrt((dx * xBias * 2)^2 + (dy * (1 - xBias) * 2)^2) * ansKbs
 
     distancePenalty = (distance + 1)^distanceEffort - 1 # This way, distanceEffort always increases even if in [0, 1]
-
-    # Double finger
-    doubleFingerPenalty = 0
-    if finger == oldFinger && distance ≈ 0
-        doubleFingerPenalty = doubleFingerEffort
-    end
-
-    # Single hand
-    singleHandPenalty = 0
-    if currentHand == oldHand
-        singleHandPenalty = singleHandEffort
-    end
-
-    # Right hand
-    rightHandPenalty = 0
-    if currentHand == 2
-        rightHandPenalty = rightHandEffort
-    end
-
-    fingerPenalty = fingerEffort[finger]
+    doubleFingerPenalty = sameFinger * doubleFingerEffort
+    singleHandPenalty = singleHandEffort
+    rightHandPenalty = rightHandEffort
+    fingerPenalty = fingerEffort[finger2]
     rowPenalty = rowEffort[row]
 
+    # TODO Put in output array instead of summing here
     # Combined weighting
     penalties = (distancePenalty, doubleFingerPenalty, singleHandPenalty, rightHandPenalty, fingerPenalty, rowPenalty) .* effortWeighting
-    #println(penalties)
-    newObjective = objectiveCounter + sum(penalties)
+    out[i] = sum(penalties)
 
-    fingerData[finger][3] = x
-    fingerData[finger][4] = y
-    fingerData[finger][5] = newObjective
-
-    return fingerData, finger, currentHand
+    return
 end
 
-function objectiveFunction(text, genome, keyboardData)
-    (; layoutMap, numFingers) = keyboardData
-    # homeX, homeY, currentX, currentY, objectiveCounter
-    fingerData = repeat([zeros(5)], 10)
-
-    for i in 1:numFingers
-        (x, y, _, _), (finger, _), _ = layoutMap[i]
-        fingerData[finger][1:4] = [x, y, x, y]
+function cudaCall!(text::CUDA.CuDeviceVector{Char,1}, out::CUDA.CuDeviceVector{Float64,1}, layoutMap::CUDA.CuDeviceVector{LayoutKey,1}, handFingers::CUDA.CuDeviceVector{Int,1}, genome::CUDA.CuDeviceVector{Int,1}, fingerEffort::CUDA.CuDeviceVector{Float64,1}, rowEffort::CUDA.CuDeviceVector{Float64,1})
+    index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
+    stride = gridDim().x * blockDim().x
+    for i in index:stride:(length(text)-1)
+        @inbounds threadExec!(i, text, out, layoutMap, handFingers, genome, fingerEffort, rowEffort)
     end
 
-    objective = 0
-    oldFinger = 0
-    oldHand = 0
+    return
+end
 
-    for currentCharacter in text
-        # determine keypress (nothing if there is no key)
-        keyPress = get(genome, currentCharacter, nothing)
+function objectiveFunction(genome, keyboardData, gpuArgs)
+    (; handFingers) = keyboardData
+    (; numThreadsInBlock, text, layoutMap, handFingers, fingerEffort, rowEffort) = gpuArgs
 
-        if isnothing(keyPress)
-            continue
-        end
+    out = CuArray{Float64}(undef, length(text) - 1)
 
-        # do keypress
-        fingerData, oldFinger, oldHand = doKeypress(keyPress, fingerData, oldFinger, oldHand, keyboardData)
-    end
+    blocks = ceil(Int, length(out) / numThreadsInBlock)
+    # Last character is not considered, since there is no next to move to
+    @cuda threads = numThreadsInBlock blocks = blocks cudaCall!(text, out, layoutMap, handFingers, CuArray{Int}(dictToArray(genome)), fingerEffort, rowEffort)
 
     # calculate and return objective
-    objective = sum(map(x -> x[5], fingerData))
+    objective = sum(out)
+
     return objective
 end
 
-function objectiveFunction(text, genome, keyboardData, baselineScore)
-    objective = (objectiveFunction(text, genome, keyboardData) / baselineScore - 1) * 100
+function objectiveFunction(genome, keyboardData, gpuArgs, baselineScore)
+    objective = (objectiveFunction(genome, keyboardData, gpuArgs) / baselineScore - 1) * 100
     return objective
 end
 

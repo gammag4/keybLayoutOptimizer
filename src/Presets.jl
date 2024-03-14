@@ -1,18 +1,20 @@
 module Presets
 
+using CUDA: CuArray
+
 include("Utils.jl")
 include("DataProcessing.jl")
 include("DataStats.jl")
 include("KeyboardGenerator.jl")
 include("DrawKeyboard.jl")
 
-using .Utils: conditionalSplit
+using .Utils: conditionalSplit, dictToArray
 using .DataProcessing: processDataFolderIntoTextFile
 using .DataStats: computeStats
 using .KeyboardGenerator: layoutGenerator, keyMapGenerator, sp, vsp
 using .DrawKeyboard: computeKeyboardColorMap
 
-export runId, randomSeed, textData, dataStats, rewardArgs, algorithmArgs, frequencyKeyboardArgs, keyboardData
+export runId, randomSeed, textData, dataStats, rewardArgs, algorithmArgs, frequencyKeyboardArgs, keyboardData, LayoutKey, gpuArgs
 
 # TODO Turn all this into a function
 
@@ -85,11 +87,13 @@ const layoutMap = layoutGenerator(
     fingersHome=[25, 26, 27, 28, 4, 4, 31, 32, 33, 34]
 )
 
+lmval = first(values(layoutMap))
+
 const fixedKeys = collect("1234567890\t\n\\ ") # Keys that will not change on shuffle
 #const fixedKeys = collect("\t\n ") # Numbers also change
 getFixedMovableKeyMaps(keyMap) = conditionalSplit(((k, v),) -> k in fixedKeys, keyMap)
 const fixedKeyMap, movableKeyMap = getFixedMovableKeyMaps(keyMap)
-const movableKeys = map(((k, v),) -> k, collect(movableKeyMap))
+const movableKeys = [k for (k, v) in movableKeyMap]
 const handFingers = [1, 1, 1, 1, 1, 2, 2, 2, 2, 2] # What finger is with which hand
 const numFingers = length(handFingers)
 const numKeys = length(keyMap)
@@ -100,7 +104,6 @@ const numMovableKeys = length(movableKeyMap)
 const rewardArgs = (
     effortWeighting=NTuple{6,Float64}((0.7, 1, 1, 0.4, 0.2, 0.15)), # dist, double finger, single hand, right hand, finger cps, row cps
     xBias=0.7, # Lateral movement penalty
-    xMoveMultiplier=4, # If 1, the weight of moving around x axis is same as moving in y axis. This effort is because lateral movements are worse
     distanceEffort=1, # Always positive. At 2, distance penalty is squared
     doubleFingerEffort=1, # Positive prevents using same finger more than once
     singleHandEffort=1, # Positive prefers double hand, negative prefers single hand
@@ -128,9 +131,12 @@ const frequencyKeyboardArgs = (
 
 using Colors
 
+const LayoutKey = Tuple{NTuple{4,Float64},NTuple{2,Int},Int}
+
 struct KeyboardData
     keyboardColorMap::Dict{Char,HSV}
-    layoutMap::Dict{Int,Tuple{NTuple{4,Float64},NTuple{2,Int},Int}}
+    layoutMap::Dict{Int,LayoutKey}
+    keyMapCharacters::Set{Char}
     keyMap::Dict{Char,Int}
     noCharKeyMap::Dict{String,Int}
     fixedKeyMap::Dict{Char,Int}
@@ -149,6 +155,7 @@ end
 const keyboardData = KeyboardData(
     keyboardColorMap,
     layoutMap,
+    keyMapCharacters,
     keyMap,
     noCharKeyMap,
     fixedKeyMap,
@@ -162,6 +169,28 @@ const keyboardData = KeyboardData(
     numLayoutKeys,
     numFixedKeys,
     numMovableKeys,
+)
+
+struct GPUArgs
+    numThreadsInBlock::Int
+    text::CuArray{Char,1}
+    layoutMap::CuArray{LayoutKey,1}
+    handFingers::CuArray{Int,1}
+    fingerEffort::CuArray{Float64,1}
+    rowEffort::CuArray{Float64,1}
+end
+
+const numThreadsInBlock = 512
+
+const (; fingerEffort, rowEffort) = dataStats
+
+const gpuArgs = GPUArgs(
+    numThreadsInBlock,
+    CuArray(collect(textData)),
+    CuArray(dictToArray(layoutMap)),
+    CuArray(handFingers),
+    CuArray(fingerEffort),
+    CuArray(rowEffort),
 )
 
 end
