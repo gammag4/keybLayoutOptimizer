@@ -78,6 +78,7 @@ function processDataFolderIntoTextFile(srcfolder, destfile; overwrite=false, ver
     dataset = createDatasetFromFolder(srcfolder)
     dataset = removeLinks(dataset) # Remove links, since we normally copy paste them instead of writing them
     dataset = mapSpecialCharacters(dataset) # Maps special characters to their respective keys pressed
+    dataset = replace(dataset, !isascii => "") # Remove non-ascii characters
     dataset = lowercase(dataset) # Uppercase or lowercase to use a single letter for each key
     dataset = strip(dataset)
 
