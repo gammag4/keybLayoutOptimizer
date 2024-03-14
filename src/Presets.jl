@@ -109,16 +109,10 @@ const rewardArgs = (
 )
 
 # Total number of iterations will be -epoch * log(t) / log(coolingRate)
-# Compute cooling rate = 1/(t)^(epoch/i)
-temperature = 500
-epoch = 20
-numIterations = 10000
-coolingRate = (1 / temperature)^(epoch / numIterations)
 const algorithmArgs = (
-    temperature=temperature,
-    epoch=epoch,
-    numIterations=numIterations,
-    coolingRate=coolingRate,
+    temperature=500,
+    epoch=20,
+    numIterations=10000,
     maxIterations=100000,
     temperatureKeyShuffleMultiplier=0.01 # Is multiplied by temperature to give number of keys shuffled (for 0.01 and t=1000, 10 keys shuffled)
 )

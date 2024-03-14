@@ -42,7 +42,6 @@ const (;
     temperature,
     epoch,
     numIterations,
-    coolingRate,
     maxIterations,
     temperatureKeyShuffleMultiplier
 ) = algorithmArgs
@@ -59,11 +58,13 @@ function runSA(;
     genomeGenerator,
     temperature,
     epoch,
-    coolingRate,
+    numIterations,
     maxIterations,
     temperatureKeyShuffleMultiplier,
     verbose,
 )
+    coolingRate = (1 / temperature)^(epoch / numIterations)
+
     mkpath("data/result$threadId")
 
     verbose && println("Running code...")
@@ -185,7 +186,7 @@ objectives = Dict{Any,Any}()
                 genomeGenerator=() -> frequencyGenome,
                 temperature=temperature,
                 epoch=epoch,
-                coolingRate=coolingRate,
+                numIterations=numIterations,
                 maxIterations=maxIterations,
                 temperatureKeyShuffleMultiplier=temperatureKeyShuffleMultiplier,
                 verbose=false
