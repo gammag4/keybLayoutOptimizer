@@ -20,10 +20,9 @@ const anskbs = 1 / keyboardSize
 
 function objective(key, dataStats, keyboardData)
     (; fingersCPS, rowsCPS) = dataStats
-    (; fingersHome, layoutMap, handFingers) = keyboardData
+    (; layoutMap, handFingers) = keyboardData
 
-    (x, y, _), (finger, _), row = layoutMap[key]
-    home = fingersHome[finger]
+    (x, y, _), (finger, home), row = layoutMap[key]
     (hx, hy, _), _, _ = layoutMap[home]
 
     # Distance penalty

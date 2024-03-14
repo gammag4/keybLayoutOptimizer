@@ -25,17 +25,8 @@ const (; fingerEffort, rowEffort, textStats) = dataStats
 const (; charHistogram, charFrequency, usedChars) = textStats
 
 const (;
-    keyboardColorMap,
-    layoutMap,
     keyMap,
-    noCharKeyMap,
-    fixedKeys,
-    fingersHome,
-    handFingers,
-    numFingers,
-    numKeys,
-    numLayoutKeys,
-    numMovableKeys
+    fixedKeys
 ) = keyboardData
 
 const (;

@@ -55,12 +55,7 @@ end
 function getFingerData(keysFingersList, fingersHome, key)
     for f in 1:10
         if key in keysFingersList[f]
-            keyFinger = f
-            if key == fingersHome[f]
-                return (keyFinger, 1)
-            else
-                return (keyFinger, 0)
-            end
+            return (f, fingersHome[f])
         end
     end
 end
@@ -68,7 +63,7 @@ end
 addFingers(layoutTuples, keysFingersList, fingersHome) =
     map(((i, ((x, y, w, h), r)),) -> ((x, y, w, h), getFingerData(keysFingersList, fingersHome, i), r), enumerate(layoutTuples))
 
-# Returns dictionary that maps key numbers to tuples with ((x, y, l), (finger, ishome), row number)
+# Returns dictionary that maps key numbers to tuples with ((x, y, w, h), (finger, home key), row number)
 function layoutGenerator(; rowsList, keysFingersList, fingersHome)
     # Rows list: Tuple(array(rows/vspacers), (starting x, starting y))
     # Row: array(key batch/spacers)

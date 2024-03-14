@@ -35,8 +35,6 @@ const textData = open(io -> read(io, String), textpath, "r")
 
 const randomSeed = 563622
 
-const fingersHome = [25, 26, 27, 28, 4, 4, 31, 32, 33, 34]
-
 const dataStats = computeStats(
     text=textData,
     fingersCPS=Vector{Float64}([5.5, 5.9, 6.3, 6.2, 6.4, 5.3, 7.0, 6.7, 5.2, 6.2]), # Tested by just pressing the home key of each finger
@@ -71,7 +69,7 @@ const layoutMap = layoutGenerator(
         [6, 20, 33, 47, 62, 77],
         [7, 8, 9, 10, 21, 22, 23, 34, 35, 36, 37, 48, 49, 50, 51, 52, 63, 64, 65, 66, 67, 78, 79, 80, 81],
     ],
-    fingersHome=fingersHome
+    fingersHome=[25, 26, 27, 28, 4, 4, 31, 32, 33, 34]
 )
 
 # TODO Split layout into list of keys with same size so that they can be shuffled
@@ -138,7 +136,6 @@ struct KeyboardData
     fixedKeys::Vector{Char}
     movableKeys::Vector{Char}
     getFixedMovableKeyMaps::typeof(getFixedMovableKeyMaps)
-    fingersHome::Vector{Int}
     handFingers::Vector{Int}
     numFingers::Int
     numKeys::Int
@@ -157,7 +154,6 @@ const keyboardData = KeyboardData(
     fixedKeys,
     movableKeys,
     getFixedMovableKeyMaps,
-    fingersHome,
     handFingers,
     numFingers,
     numKeys,
