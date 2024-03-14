@@ -1,20 +1,11 @@
 module DataProcessing
 
-using PyCall
+# TODO Check mimetype without python
+using PyCall: pyimport
 
 export processDataFolderIntoTextFile
 
-# TODO Check mimetype without python
-# PyCall block
-function __init__()
-    py"""
-    import mimetypes
-
-    # No mimetype library in Julia (???)
-    def get_mime(x):
-        return mimetypes.guess_type(x)[0]
-    """
-end
+const mimetypes = pyimport("mimetypes")
 
 # Returns all text files in path and its subfolders as one string
 function createDatasetFromFolder(path; verbose=false)
@@ -23,7 +14,7 @@ function createDatasetFromFolder(path; verbose=false)
     for (root, dirs, files) in walkdir(path)
         for (i, file) in enumerate(files)
             fpath = joinpath(root, file)
-            mime = py"get_mime"(fpath)
+            mime = mimetypes.guess_type(fpath)[1]
             # Uses only text data
             # The image part removes images like svg (which are xml)
             # TODO Remove all svg types
@@ -69,7 +60,7 @@ function mapSpecialCharacters(dataset)
 end
 
 # Only processes data if target file does not exist yet
-function processDataFolderIntoTextFile(srcfolder, destfile; overwrite=false, verbose=false)
+function processDataFolderIntoTextFile(srcfolder, destfile, keyMapCharacters; overwrite=false, verbose=false)
     if !overwrite && isfile(destfile)
         verbose && println("Skipped processing data, Processed data file found")
         return
@@ -79,6 +70,7 @@ function processDataFolderIntoTextFile(srcfolder, destfile; overwrite=false, ver
     dataset = removeLinks(dataset) # Remove links, since we normally copy paste them instead of writing them
     dataset = mapSpecialCharacters(dataset) # Maps special characters to their respective keys pressed
     dataset = replace(dataset, !isascii => "") # Remove non-ascii characters
+    dataset = filter(x -> x in keyMapCharacters, dataset) # Remove characters that are not in the keymap
     dataset = lowercase(dataset) # Uppercase or lowercase to use a single letter for each key
     dataset = strip(dataset)
 

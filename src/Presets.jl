@@ -26,9 +26,22 @@ mkpath("data/result/final")
 mkpath("data/lastRuns")
 const runId = 1 + last(sort(vcat([0], collect(map(i -> parse(Int, replace(i, r"[^0-9]" => "")), readdir("data/lastRuns/"))))))
 
+# TODO Split layout into list of keys with same size so that they can be shuffled
+const keyMap = keyMapGenerator(
+    keys=[" ", "zxcvbnm,./", "asdfghjkl;'\n", "\tqwertyuiop[]\\", "`1234567890-="], # Rows of the keyboard layout that are actual characters
+    startIndices=[4, 12, 25, 38, 53] # Indices of keys of the first key of each row in the layout map
+)
+
+const keyMapCharacters = Set(keys(keyMap))
+
+const noCharKeyMap = keyMapGenerator(
+    keys=[["ctrl", "win", "alt", "space", "agr", "fn", "rctl", "lf", "dn", "rt"], ["shift"], ["rshift", "up"], ["caps"], ["enter", "del", "tab"], ["ins"], ["bsp", ""], ["esc"], ["f$i" for i in 1:12], ["psc"]],
+    startIndices=[1, 11, 22, 24, 36, 52, 66, 68, 69, 81]
+)
+
 # TODO Move this
 # Processing data
-processDataFolderIntoTextFile("_raw_dataset", textpath, overwrite=false, verbose=true)
+processDataFolderIntoTextFile("_raw_dataset", textpath, keyMapCharacters, overwrite=false, verbose=true)
 
 # Getting data
 const textData = open(io -> read(io, String), textpath, "r")
@@ -70,17 +83,6 @@ const layoutMap = layoutGenerator(
         [7, 8, 9, 10, 21, 22, 23, 34, 35, 36, 37, 48, 49, 50, 51, 52, 63, 64, 65, 66, 67, 78, 79, 80, 81],
     ],
     fingersHome=[25, 26, 27, 28, 4, 4, 31, 32, 33, 34]
-)
-
-# TODO Split layout into list of keys with same size so that they can be shuffled
-const keyMap = keyMapGenerator(
-    keys=[" ", "zxcvbnm,./", "asdfghjkl;'\n", "\tqwertyuiop[]\\", "`1234567890-="], # Rows of the keyboard layout that are actual characters
-    startIndices=[4, 12, 25, 38, 53] # Indices of keys of the first key of each row in the layout map
-)
-
-const noCharKeyMap = keyMapGenerator(
-    keys=[["ctrl", "win", "alt", "space", "agr", "fn", "rctl", "lf", "dn", "rt"], ["shift"], ["rshift", "up"], ["caps"], ["enter", "del", "tab"], ["ins"], ["bsp", ""], ["esc"], ["f$i" for i in 1:12], ["psc"]],
-    startIndices=[1, 11, 22, 24, 36, 52, 66, 68, 69, 81]
 )
 
 const fixedKeys = collect("1234567890\t\n\\ ") # Keys that will not change on shuffle
