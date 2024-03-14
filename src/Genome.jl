@@ -1,7 +1,12 @@
 module Genome
 
-using Random
-using Utils
+using Random: randperm, shuffle
+
+include("Utils.jl")
+
+using .Utils: conditionalSplit
+
+export shuffleKeyMap, shuffleGenomeKeyMap
 
 # Num keys should not exceed length(keyMap) - length(fixedKeys)
 function shuffleKeyMap(rng, keyMap, fixedKeys; numKeys=nothing)
@@ -29,6 +34,5 @@ function shuffleGenomeKeyMap(rng, genome, fixedKeys, numKeys)
 
     return newGenome
 end
-export shuffleKeyMap, shuffleGenomeKeyMap
 
 end

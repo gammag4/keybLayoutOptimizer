@@ -1,11 +1,17 @@
 module FrequencyKeyboard
 
-using Setfield
-using LinearAlgebra
+using Setfield: @set
+using LinearAlgebra: normalize
 
-using Presets
-using Utils
-using DrawKeyboard
+include("Presets.jl")
+include("Utils.jl")
+include("DrawKeyboard.jl")
+
+using .Presets: frequencyKeyboardArgs
+using .Utils: conditionalSplit
+using .DrawKeyboard: computeKeyboardColorMap, drawKeyboard
+
+export createFrequencyGenome, drawFrequencyKeyboard
 
 const (; xBias, distanceBias, leftHandBias, rowCPSBias, keyboardSize) = frequencyKeyboardArgs
 const anskbs = 1 / keyboardSize
@@ -80,7 +86,5 @@ function drawFrequencyKeyboard(filepath, genome, freqKeyMap, keyboardData; useFr
 
     drawKeyboard(genome, filepath, kbData)
 end
-
-export createFrequencyGenome, drawFrequencyKeyboard
 
 end

@@ -1,10 +1,18 @@
 module Presets
 
-using Utils
-using DataProcessing
-using DataStats
-using KeyboardGenerator
-using DrawKeyboard
+include("Utils.jl")
+include("DataProcessing.jl")
+include("DataStats.jl")
+include("KeyboardGenerator.jl")
+include("DrawKeyboard.jl")
+
+using .Utils: conditionalSplit
+using .DataProcessing: processDataFolderIntoTextFile
+using .DataStats: computeStats
+using .KeyboardGenerator: layoutGenerator, keyMapGenerator, sp, vsp
+using .DrawKeyboard: computeKeyboardColorMap
+
+export runId, randomSeed, textData, dataStats, rewardArgs, algorithmArgs, frequencyKeyboardArgs, keyboardData
 
 # TODO Turn all this into a function
 
@@ -163,7 +171,5 @@ const keyboardData = KeyboardData(
     numFixedKeys,
     numMovableKeys,
 )
-
-export runId, randomSeed, textData, dataStats, rewardArgs, algorithmArgs, frequencyKeyboardArgs, keyboardData, drawKeyboard
 
 end

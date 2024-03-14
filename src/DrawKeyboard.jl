@@ -1,7 +1,9 @@
 module DrawKeyboard
 
-using Plots
-using Colors
+using Plots: plot, plot!, annotate!, text, savefig, Shape
+using Colors: HSV, HSVA
+
+export computeKeyboardColorMap, drawKeyboard
 
 # Hue goes from 170 (min f) to 0 (max f)
 # Saturation is the normalized frequency of each key
@@ -58,7 +60,5 @@ function drawKeyboard(genome, filepath, keyboardData, lk)
         drawKeyboard(genome, filepath, keyboardData)
     end
 end
-
-export computeKeyboardColorMap, drawKeyboard
 
 end

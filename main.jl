@@ -1,19 +1,25 @@
-push!(LOAD_PATH, "src/")
-
 import Pkg
 Pkg.activate(@__DIR__)
 Pkg.instantiate()
-using Random, StableRNGs
-using .Threads
-using BenchmarkTools
-using Revise
-using Base.Filesystem
 
-using Presets
-using Genome
-using FrequencyKeyboard
-using DrawKeyboard
-using KeyboardObjective
+#using Revise
+using Random: rand
+using StableRNGs: LehmerRNG
+using Base.Threads: @spawn, @threads, threadid, nthreads
+using BenchmarkTools: @time
+using Base.Filesystem: cptree
+
+include("src/Presets.jl")
+include("src/Genome.jl")
+include("src/FrequencyKeyboard.jl")
+include("src/DrawKeyboard.jl")
+include("src/KeyboardObjective.jl")
+
+using .Presets: runId, randomSeed, textData, dataStats, keyboardData, algorithmArgs
+using .Genome: shuffleGenomeKeyMap
+using .FrequencyKeyboard: createFrequencyGenome, drawFrequencyKeyboard
+using .DrawKeyboard: drawKeyboard
+using .KeyboardObjective: objectiveFunction
 
 const (; fingerEffort, rowEffort, textStats) = dataStats
 const (; charHistogram, charFrequency, usedChars) = textStats
@@ -72,7 +78,7 @@ function runSA(;
     bestGenome = currentGenome
     bestObjective = currentObjective
 
-    Threads.@spawn :interactive drawKeyboard(bestGenome, "data/result/first/$threadId.png", keyboardData, lk)
+    @spawn :interactive drawKeyboard(bestGenome, "data/result/first/$threadId.png", keyboardData, lk)
 
     baseTemp = temperature
     try
@@ -110,7 +116,7 @@ function runSA(;
                     bestObjective = newObjective
 
                     verbose && println("(new best, text being saved)")
-                    Threads.@spawn :interactive drawKeyboard(bestGenome, "data/result$threadId/$iteration.png", keyboardData, lk)
+                    @spawn :interactive drawKeyboard(bestGenome, "data/result$threadId/$iteration.png", keyboardData, lk)
                     # open("data/result/bestGenomes.txt", "a") do io
                     #     print(io, iteration, ":")
                     #     for c in bestGenome
@@ -143,7 +149,7 @@ function runSA(;
         end
     end
 
-    Threads.@spawn :interactive drawKeyboard(bestGenome, "data/result/final/$threadId.png", keyboardData, lk)
+    @spawn :interactive drawKeyboard(bestGenome, "data/result/final/$threadId.png", keyboardData, lk)
 
     return bestGenome, bestObjective
 end
@@ -151,10 +157,10 @@ end
 frequencyGenome, freqKeyMap = createFrequencyGenome(dataStats, keyboardData)
 drawFrequencyKeyboard("data/frequencyKeyboard.png", frequencyGenome, freqKeyMap, keyboardData, useFrequencyColorMap=false)
 
-const nts = Threads.nthreads()
+const nts = nthreads()
 
-const rng = StableRNGs.LehmerRNG(randomSeed)
-const rngs = StableRNGs.LehmerRNG.(rand(rng, 1:typemax(Int), nts))
+const rng = LehmerRNG(randomSeed)
+const rngs = LehmerRNG.(rand(rng, 1:typemax(Int), nts))
 genomes = Dict{Any,Any}()
 objectives = Dict{Any,Any}()
 
@@ -165,8 +171,8 @@ objectives = Dict{Any,Any}()
 @time begin
     @sync begin
         lk = ReentrantLock()
-        Threads.@threads :static for i in 1:nts
-            tid = Threads.threadid()
+        @threads :static for i in 1:nts
+            tid = threadid()
 
             genome, objective = runSA(
                 threadId=tid,

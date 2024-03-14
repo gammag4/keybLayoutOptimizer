@@ -1,6 +1,10 @@
 module KeyboardObjective
 
-using Presets
+include("Presets.jl")
+
+using .Presets: dataStats, rewardArgs
+
+export objectiveFunction
 
 const (; fingerEffort, rowEffort, textStats) = dataStats
 
@@ -112,7 +116,5 @@ function objectiveFunction(text, genome, keyboardData, baselineScore)
     objective = (objectiveFunction(text, genome, keyboardData) / baselineScore - 1) * 100
     return objective
 end
-
-export objectiveFunction
 
 end

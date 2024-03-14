@@ -1,6 +1,8 @@
 module DataStats
 
-using Statistics
+using Statistics: mean, std
+
+export computeStats
 
 # TODO Reverse reward
 function computeEffort(arrCPM)
@@ -67,7 +69,5 @@ function computeStats(;
         computeTextStats(text),
     )
 end
-
-export computeStats
 
 end

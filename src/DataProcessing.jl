@@ -2,6 +2,9 @@ module DataProcessing
 
 using PyCall
 
+export processDataFolderIntoTextFile
+
+# TODO Check mimetype without python
 # PyCall block
 function __init__()
     py"""
@@ -80,7 +83,5 @@ function processDataFolderIntoTextFile(srcfolder, destfile; overwrite=false, ver
 
     open(f -> write(f, dataset), destfile, "w")
 end
-
-export processDataFolderIntoTextFile
 
 end

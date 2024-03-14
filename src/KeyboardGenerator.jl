@@ -1,5 +1,11 @@
 module KeyboardGenerator
 
+include("Utils.jl")
+
+using .Utils: rpadIter, rpadIterArr
+
+export sp, vsp, layoutGenerator, keyMapGenerator
+
 const sp = -2
 const vsp = -4
 
@@ -83,7 +89,5 @@ function keyMapGenerator(; keys, startIndices)
     ids = reduce(vcat, sts)
     return Dict(ks[i] => ids[i] for i in eachindex(ks))
 end
-
-export sp, vsp, layoutGenerator, keyMapGenerator
 
 end
