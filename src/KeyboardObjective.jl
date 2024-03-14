@@ -28,7 +28,7 @@ const anskbs = 1 / keyboardSize
 
 function doKeypress(keyPress, fingerData, oldFinger, oldHand, keyboardData)
     (; layoutMap, numFingers, handFingers) = keyboardData
-    (x, y, _), (finger, _), row = layoutMap[keyPress]
+    (x, y, _, _), (finger, _), row = layoutMap[keyPress]
     currentHand = handFingers[finger]
     homeX, homeY, currentX, currentY, objectiveCounter = fingerData[finger]
 
@@ -87,7 +87,7 @@ function objectiveFunction(text, genome, keyboardData)
     fingerData = repeat([zeros(5)], 10)
 
     for i in 1:numFingers
-        (x, y, _), (finger, _), _ = layoutMap[i]
+        (x, y, _, _), (finger, _), _ = layoutMap[i]
         fingerData[finger][1:4] = [x, y, x, y]
     end
 

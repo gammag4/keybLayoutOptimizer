@@ -16,16 +16,18 @@ getTotalNumRows(rowslistlist) = maximum(getNumRows.(rowslistlist))
 
 function getLayoutRow(row, x, y)
     pos = x
-    lrow = NTuple{3,Float64}[]
+    lrow = NTuple{4,Float64}[]
 
-    for (n, l, h) in row
+    for batch in row
+        # number of keys in batch, width of each key, delta position in y axis (when not aligned vertically to others), height (default 1)
+        (n, w, dh, h) = rpadIterArr(batch, 4, [1, 0, 1])
         if n == sp
-            pos += l
+            pos += w
             continue
         end
 
-        append!(lrow, map(((i, (x, y, l)),) -> (x + (i - 1) * l, y, l), enumerate(repeat([(pos + (l / 2) - 0.5, y + h, l)], n))))
-        pos += l * n
+        append!(lrow, map(((i, (x, y, w)),) -> (x + (i - 1) * w, y, w, h), enumerate(repeat([(pos + (w / 2) - 0.5, y + dh, w)], n))))
+        pos += w * n
     end
 
     return lrow
@@ -37,7 +39,7 @@ function getLayoutRowsList(rowslist)
     lrows = repeat([[]], getCurrentRow(y))
 
     for row in rowslist
-        (n, l) = row[1]
+        (n, l) = rpadIter(row[1], 2, 0)
         if n == vsp
             pos += l
             continue
@@ -64,7 +66,7 @@ function getFingerData(keysFingersList, fingersHome, key)
 end
 
 addFingers(layoutTuples, keysFingersList, fingersHome) =
-    map(((i, ((x, y, l), r)),) -> ((x, y, l), getFingerData(keysFingersList, fingersHome, i), r), enumerate(layoutTuples))
+    map(((i, ((x, y, w, h), r)),) -> ((x, y, w, h), getFingerData(keysFingersList, fingersHome, i), r), enumerate(layoutTuples))
 
 # Returns dictionary that maps key numbers to tuples with ((x, y, l), (finger, ishome), row number)
 function layoutGenerator(; rowsList, keysFingersList, fingersHome)
@@ -76,7 +78,7 @@ function layoutGenerator(; rowsList, keysFingersList, fingersHome)
 
     layoutRowsList = getLayoutRowsList(rowsList)
 
-    maprows = ((i, r),) -> map(((x, y, l),) -> ((x, y, l), i), r)
+    maprows = ((i, r),) -> map(((x, y, w, h),) -> ((x, y, w, h), i), r)
     layoutTuples = reduce(vcat, map(maprows, enumerate(layoutRowsList)))
     layoutTuples2 = addFingers(layoutTuples, keysFingersList, fingersHome)
     layout = Dict(i => t for (i, t) in enumerate(layoutTuples2))

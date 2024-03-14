@@ -51,13 +51,13 @@ const keyboardColorMap = computeKeyboardColorMap(charFrequency)
 # Keychron Q1 Pro layout
 const layoutMap = layoutGenerator(
     rowsList=([
-            [(3, 1.25, 0), (1, 6.25, 0), (3, 1, 0), (sp, 0.25, 0), (3, 1, -0.25)],
-            [(1, 2.25, 0), (10, 1, 0), (1, 1.75, 0), (sp, 0.25, 0), (1, 1, -0.25)],
-            [(1, 1.75, 0), (11, 1, 0), (1, 2.25, 0), (sp, 0.25, 0), (1, 1, 0)],
-            [(1, 1.5, 0), (12, 1, 0), (1, 1.5, 0), (sp, 0.25, 0), (1, 1, 0)],
-            [(13, 1, 0), (1, 2, 0), (sp, 0.25, 0), (1, 1, 0)],
-            [(vsp, 0.25, 0)],
-            [(1, 1, 0), (sp, 0.25, 0), (4, 1, 0), (sp, 0.25, 0), (4, 1, 0), (sp, 0.25, 0), (4, 1, 0), (sp, 0.25, 0), (1, 1, 0)],
+            [(3, 1.25), (1, 6.25), (3,), (sp, 0.25), (3, 1, -0.25)],
+            [(1, 2.25), (10,), (1, 1.75), (sp, 0.25), (1, 1, -0.25)],
+            [(1, 1.75), (11,), (1, 2.25), (sp, 0.25), (1,)],
+            [(1, 1.5), (12,), (1, 1.5), (sp, 0.25), (1,)],
+            [(13,), (1, 2), (sp, 0.25), (1,)],
+            [(vsp, 0.25)],
+            [(1,), (sp, 0.25), (4,), (sp, 0.25), (4,), (sp, 0.25), (4,), (sp, 0.25), (1,)],
         ], (0.5, 0.5)),
     keysFingersList=[
         [1, 11, 24, 25, 38, 39, 53, 54, 68, 69],
@@ -130,7 +130,7 @@ using Colors
 
 struct KeyboardData
     keyboardColorMap::Dict{Char,HSV}
-    layoutMap::Dict{Int,Tuple{NTuple{3,Float64},NTuple{2,Int},Int}}
+    layoutMap::Dict{Int,Tuple{NTuple{4,Float64},NTuple{2,Int},Int}}
     keyMap::Dict{Char,Int}
     noCharKeyMap::Dict{String,Int}
     fixedKeyMap::Dict{Char,Int}

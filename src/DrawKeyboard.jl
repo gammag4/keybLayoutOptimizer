@@ -20,8 +20,7 @@ end
 
 function drawKey(layoutKey, letter, keyboardData)
     (; keyboardColorMap, numFingers) = keyboardData
-    (x, y, w), (finger, home), row = layoutKey
-    h = 1 # TODO Add h to layout
+    (x, y, w, h), (finger, home), row = layoutKey
     color = get(keyboardColorMap, lowercase(letter), HSV(220, 0.2, 1))
     border = Shape((x - 0.5 * w) .+ [0, w, w, 0], (y - 0.5 * h) .+ [0, 0, h, h])
     rect = Shape((x - 0.5 * w + 0.03) .+ ((w - 0.06) .* [0, 1, 1, 0]), (y - 0.5 * h + 0.03) .+ ((h - 0.06) .* [0, 0, 1, 1]))
