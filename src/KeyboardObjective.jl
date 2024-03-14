@@ -6,12 +6,21 @@ const (; fingerEffort, rowEffort, textStats) = dataStats
 
 const (;
     effortWeighting,
+    xBias,
     xMoveMultiplier,
     distanceEffort,
     doubleFingerEffort,
     singleHandEffort,
     rightHandEffort,
+    keyboardSize,
 ) = rewardArgs
+
+const anskbs = 1 / keyboardSize
+
+# TODO Compute rewards in bulk for all keys and use the whole data to compute and normalize rewards in the end
+# TODO Split dataset into array of smaller pieces and use it to parallelize,
+# creating also another array with the transitions between keys of the end of a piece and the start of another
+# Then, compute everything in bulk for the whole dataset and summarize all reward in the end from all data
 
 function doKeypress(keyPress, fingerData, oldFinger, oldHand, keyboardData)
     (; layoutMap, numFingers, handFingers) = keyboardData
@@ -31,13 +40,13 @@ function doKeypress(keyPress, fingerData, oldFinger, oldHand, keyboardData)
     fingerData[finger][4] = currentY
 
     dx, dy = x - currentX, y - currentY
-    distance = sqrt((dx * xMoveMultiplier)^2 + dy^2)
+    distance = 1 - sqrt((dx * xBias * 2)^2 + (dy * (1 - xBias) * 2)^2) * anskbs
 
     distancePenalty = (distance + 1)^distanceEffort - 1 # This way, distanceEffort always increases even if in [0, 1]
 
     # Double finger
     doubleFingerPenalty = 0
-    if finger == oldFinger && distance > 0.01
+    if finger == oldFinger && distance ≈ 0
         doubleFingerPenalty = doubleFingerEffort
     end
 

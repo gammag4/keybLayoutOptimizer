@@ -8,6 +8,7 @@ using Utils
 using DrawKeyboard
 
 const (; xBias, distanceBias, leftHandBias, rowCPSBias, keyboardSize) = frequencyKeyboardArgs
+const anskbs = 1 / keyboardSize
 
 # TODO Optimize code here: Change <something> in <list> to dictionary haskey or something
 
@@ -21,7 +22,7 @@ function objective(key, dataStats, keyboardData)
 
     # Distance penalty
     dx, dy = x - hx, y - hy
-    distancePenalty = 1 - sqrt((dx * xBias * 2)^2 + (dy * (1 - xBias) * 2)^2) / keyboardSize
+    distancePenalty = 1 - sqrt((dx * xBias * 2)^2 + (dy * (1 - xBias) * 2)^2) * anskbs
 
     # Finger and row reward
     # TODO change to bounds [0,1] and compute outside function

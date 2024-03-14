@@ -91,11 +91,13 @@ const numMovableKeys = length(movableKeyMap)
 
 const rewardArgs = (
     effortWeighting=NTuple{6,Float64}((0.7, 1, 1, 0.4, 0.2, 0.15)), # dist, double finger, single hand, right hand, finger cps, row cps
+    xBias=0.7, # Lateral movement penalty
     xMoveMultiplier=4, # If 1, the weight of moving around x axis is same as moving in y axis. This effort is because lateral movements are worse
     distanceEffort=1, # Always positive. At 2, distance penalty is squared
     doubleFingerEffort=1, # Positive prevents using same finger more than once
     singleHandEffort=1, # Positive prefers double hand, negative prefers single hand
-    rightHandEffort=1 # Right hand also uses the mouse
+    rightHandEffort=1, # Right hand also uses the mouse
+    keyboardSize=16,
 )
 
 # Total number of iterations will be -epoch * log(t) / log(coolingRate)
