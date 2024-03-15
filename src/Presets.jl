@@ -129,7 +129,6 @@ const rewardArgs = RewardArgs(
     doubleFingerEffort=1, # Positive prevents using same finger more than once
     singleHandEffort=1, # Positive prefers double hand, negative prefers single hand
     rightHandEffort=1, # Right hand also uses the mouse
-    nonNeighborsEffort=0, # Penalty if keys for [], <> and () are not neighbors (0 is no penalty)
     ansKbs=1 / keyboardSize,
 )
 
