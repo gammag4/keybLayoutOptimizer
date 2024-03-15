@@ -75,8 +75,13 @@ function cudaCall!(out::CUDA.CuDeviceVector{Float64,1}, genome::CUDA.CuDeviceVec
     return
 end
 
+checkNeighbor(char1, char2, genome) = abs(genome[char1] - genome[char2] + 1)
+
+checkNeighborsFunc(chars, genome) = sum((checkNeighbor(i, j, genome) for (i, j) in chars)) / length(chars)
+
 function objectiveFunction(genome, gpuArgs, rewardArgs)
     (; numThreadsInBlock, text, layoutMap, handFingers, fingerEffort, rowEffort) = gpuArgs
+    (; nonNeighborsEffort, ansKbs) = rewardArgs
 
     out = CuArray{Float64}(undef, length(text) - 1)
 
@@ -86,6 +91,12 @@ function objectiveFunction(genome, gpuArgs, rewardArgs)
 
     # calculate and return objective
     objective = sum(out)
+
+    # TODO Move
+    # # Checks for [], <> and () being neighbors
+    # checkNeighbors = checkNeighborsFunc(vcat(["[]", ",."], ["$i$(i+1)" for i in 0:8]), genome)
+    # objective = objective * (1 + checkNeighbors * nonNeighborsEffort / ansKbs)
+
     return objective
 end
 

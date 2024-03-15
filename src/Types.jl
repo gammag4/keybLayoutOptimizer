@@ -14,6 +14,7 @@ export RewardArgs, FrequencyRewardArgs, LayoutKey, KeyboardData, GPUArgs
     doubleFingerEffort::Float64
     singleHandEffort::Float64
     rightHandEffort::Float64
+    nonNeighborsEffort::Float64
     ansKbs::Float64
 end
 
