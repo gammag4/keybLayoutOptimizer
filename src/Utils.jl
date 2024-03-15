@@ -1,5 +1,6 @@
 module Utils
 
+using Statistics: mean, std
 using Base.Iterators: flatten, take, drop, repeated
 
 export conditionalSplit, lpadIter, rpadIter, mergeIter
@@ -31,6 +32,28 @@ function dictToArray(d)
     v = first(d)
     res::Vector{typeof(v[2])} = [get(d, typeof(v[1])(i), v[2]) for i in 1:maximum(Int.(keys(d)))]
     return res
+end
+
+# Use this to insert one variable at a time in a multivariable function, where g is the function and i is the total number of arguments
+# The arguments are put in the order they appear
+# The precedence is from right to left
+# E.g.: 3 → 78 → 21 → (+, 3) returns 102
+→(x, (g, i)) = i == 1 ? g(x) : ((args...) -> g(args..., x), i - 1)
+
+# Scales to range [a,b], can also reverse the order (a > b)
+function minMaxScale(v, a, b)
+    mi, ma = minimum(v), maximum(v)
+    return (x -> (b - a) * (x - mi) / (ma - mi) + a).(v)
+end
+
+minMaxScale(v) = minMaxScale(v, 0, 1)
+
+lpTransform(v, k) = minMaxScale(minMaxScale(v, 0, 1) .^ k, minimum(v), maximum(v))
+
+function zscore(v)
+    m = mean(v)
+    st = std(v)
+    return (x -> (x - m) / st).(v)
 end
 
 end

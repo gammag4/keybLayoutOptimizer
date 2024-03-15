@@ -2,31 +2,27 @@ module KeyboardObjective
 
 using CUDA
 
-include("Presets.jl")
+include("Types.jl")
 include("Utils.jl")
 
-using .Presets: dataStats, rewardArgs, gpuArgs, LayoutKey
+using .Types: RewardArgs, LayoutKey
 using .Utils: dictToArray
 
 export objectiveFunction
 
-const (; fingerEffort, rowEffort) = dataStats
-
-const (;
-    effortWeighting,
-    xBias,
-    distanceEffort,
-    doubleFingerEffort,
-    singleHandEffort,
-    rightHandEffort,
-    keyboardSize,
-) = rewardArgs
-
-const ansKbs = 1 / keyboardSize
-
 # TODO Compute rewards in bulk for all keys and use the whole data to compute, normalize rewards and compute all reward
 
-function threadExec!(i::Int, text::CUDA.CuDeviceVector{Char,1}, out::CUDA.CuDeviceVector{Float64,1}, layoutMap::CUDA.CuDeviceVector{LayoutKey,1}, handFingers::CUDA.CuDeviceVector{Int,1}, genome::CUDA.CuDeviceVector{Int,1}, fingerEffort::CUDA.CuDeviceVector{Float64,1}, rowEffort::CUDA.CuDeviceVector{Float64,1})
+function threadExec!(i::Int, out::CUDA.CuDeviceVector{Float64,1}, genome::CUDA.CuDeviceVector{Int,1}, rewardArgs, text::CUDA.CuDeviceVector{Char,1}, layoutMap::CUDA.CuDeviceVector{LayoutKey,1}, handFingers::CUDA.CuDeviceVector{Int,1}, fingerEffort::CUDA.CuDeviceVector{Float64,1}, rowEffort::CUDA.CuDeviceVector{Float64,1})
+    (;
+        effortWeighting,
+        xBias,
+        distanceEffort,
+        doubleFingerEffort,
+        singleHandEffort,
+        rightHandEffort,
+        ansKbs,
+    ) = rewardArgs
+
     # Thread memory:
     # layoutMap, handfingers, text[i:i + 1], fingerEffort, rowEffort, genome, xBias, ansKbs
 
@@ -52,12 +48,12 @@ function threadExec!(i::Int, text::CUDA.CuDeviceVector{Char,1}, out::CUDA.CuDevi
 
     # Distance (normalized by keyboard size)
     dx, dy = x2 - x1, y2 - y1
-    distance = 1 - sqrt((dx * xBias * 2)^2 + (dy * (1 - xBias) * 2)^2) * ansKbs
+    distance = sqrt((dx * xBias * 2)^2 + (dy * (1 - xBias) * 2)^2) * ansKbs
 
     distancePenalty = (distance + 1)^distanceEffort - 1 # This way, distanceEffort always increases even if in [0, 1]
     doubleFingerPenalty = sameFinger * doubleFingerEffort
-    singleHandPenalty = singleHandEffort
-    rightHandPenalty = rightHandEffort
+    singleHandPenalty = sameHand * singleHandEffort
+    rightHandPenalty = rightHand * rightHandEffort
     fingerPenalty = fingerEffort[finger2]
     rowPenalty = rowEffort[row]
 
@@ -69,34 +65,42 @@ function threadExec!(i::Int, text::CUDA.CuDeviceVector{Char,1}, out::CUDA.CuDevi
     return
 end
 
-function cudaCall!(text::CUDA.CuDeviceVector{Char,1}, out::CUDA.CuDeviceVector{Float64,1}, layoutMap::CUDA.CuDeviceVector{LayoutKey,1}, handFingers::CUDA.CuDeviceVector{Int,1}, genome::CUDA.CuDeviceVector{Int,1}, fingerEffort::CUDA.CuDeviceVector{Float64,1}, rowEffort::CUDA.CuDeviceVector{Float64,1})
+function cudaCall!(out::CUDA.CuDeviceVector{Float64,1}, genome::CUDA.CuDeviceVector{Int,1}, rewardArgs, text::CUDA.CuDeviceVector{Char,1}, layoutMap::CUDA.CuDeviceVector{LayoutKey,1}, handFingers::CUDA.CuDeviceVector{Int,1}, fingerEffort::CUDA.CuDeviceVector{Float64,1}, rowEffort::CUDA.CuDeviceVector{Float64,1})
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     stride = gridDim().x * blockDim().x
     for i in index:stride:(length(text)-1)
-        @inbounds threadExec!(i, text, out, layoutMap, handFingers, genome, fingerEffort, rowEffort)
+        @inbounds threadExec!(i, out, genome, rewardArgs, text, layoutMap, handFingers, fingerEffort, rowEffort)
     end
 
     return
 end
 
-function objectiveFunction(genome, keyboardData, gpuArgs)
-    (; handFingers) = keyboardData
+checkNeighbor(char1, char2, genome) = abs(genome[char1] - genome[char2] + 1)
+
+checkNeighborsFunc(chars, genome) = sum((checkNeighbor(i, j, genome) for (i, j) in chars)) / length(chars)
+
+function objectiveFunction(genome, gpuArgs, rewardArgs)
     (; numThreadsInBlock, text, layoutMap, handFingers, fingerEffort, rowEffort) = gpuArgs
+    (; nonNeighborsEffort, ansKbs) = rewardArgs
 
     out = CuArray{Float64}(undef, length(text) - 1)
 
     blocks = ceil(Int, length(out) / numThreadsInBlock)
     # Last character is not considered, since there is no next to move to
-    @cuda threads = numThreadsInBlock blocks = blocks cudaCall!(text, out, layoutMap, handFingers, CuArray{Int}(dictToArray(genome)), fingerEffort, rowEffort)
+    @cuda threads = numThreadsInBlock blocks = blocks cudaCall!(out, CuArray{Int}(dictToArray(genome)), rewardArgs, text, layoutMap, handFingers, fingerEffort, rowEffort)
 
     # calculate and return objective
     objective = sum(out)
 
+    # Checks for [], <> and () being neighbors
+    checkNeighbors = checkNeighborsFunc(vcat(["[]", ",."], ["$i$(i+1)" for i in 0:8]), genome)
+    objective = objective * (1 + checkNeighbors * nonNeighborsEffort / ansKbs)
+
     return objective
 end
 
-function objectiveFunction(genome, keyboardData, gpuArgs, baselineScore)
-    objective = (objectiveFunction(genome, keyboardData, gpuArgs) / baselineScore - 1) * 100
+function objectiveFunction(genome, gpuArgs, rewardArgs, baselineScore)
+    objective = (objectiveFunction(genome, gpuArgs, rewardArgs) / baselineScore - 1) * 100
     return objective
 end
 

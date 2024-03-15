@@ -16,7 +16,7 @@ include("src/DrawKeyboard.jl")
 include("src/KeyboardObjective.jl")
 include("src/Utils.jl")
 
-using .Presets: runId, randomSeed, textData, dataStats, keyboardData, algorithmArgs, gpuArgs
+using .Presets: runId, randomSeed, textData, dataStats, keyboardData, rewardArgs, frequencyRewardArgs, algorithmArgs, gpuArgs
 using .Genome: shuffleGenomeKeyMap
 using .FrequencyKeyboard: createFrequencyGenome, drawFrequencyKeyboard
 using .DrawKeyboard: drawKeyboard
@@ -60,19 +60,19 @@ function runSA(;
 
     mkpath("data/result$threadId")
 
-    verbose && println("Running code...")
+    verbose && println("Starting run #$runId")
     verbose && print("Calculating raw baseline: ")
-    baselineScore = objectiveFunction(baselineGenome, keyboardData, gpuArgs)
+    baselineScore = objectiveFunction(baselineGenome, gpuArgs, rewardArgs)
     verbose && println(baselineScore)
     verbose && println("From here everything is reletive with + % worse and - % better than this baseline \n Note that best layout is being saved as a png at each step. Kill program when satisfied.")
 
     currentGenome = genomeGenerator()
-    currentObjective = objectiveFunction(currentGenome, keyboardData, gpuArgs, baselineScore)
+    currentObjective = objectiveFunction(currentGenome, gpuArgs, rewardArgs, baselineScore)
 
     bestGenome = currentGenome
     bestObjective = currentObjective
 
-    @spawn :interactive drawKeyboard(bestGenome, "data/result/first/$threadId.png", keyboardData, lk)
+    drawKeyboard(bestGenome, "data/result/first/$threadId.png", keyboardData, lk)
 
     baseTemp = temperature
     try
@@ -81,11 +81,12 @@ function runSA(;
                 break
             end
 
+            # TODO Shuffle genome in GPU
             # Create new genome
             newGenome = shuffleGenomeKeyMap(rng, currentGenome, fixedKeys, floor(Int, temperature * temperatureKeyShuffleMultiplier))
 
             # Asess
-            newObjective = objectiveFunction(newGenome, keyboardData, gpuArgs, baselineScore)
+            newObjective = objectiveFunction(newGenome, gpuArgs, rewardArgs, baselineScore)
             delta = newObjective - currentObjective
 
             srid = lpad(threadId, 3, " ")
@@ -95,7 +96,7 @@ function runSA(;
             snobj = lpad(round(newObjective, digits=3), 8, " ")
             updateLine = "Thread: $srid, Iteration: $sit, temp: $stemp, best obj: $sobj, new obj: $snobj"
 
-            (verbose || iteration % 100 == 1) && println(updateLine)
+            (iteration % 1000 == 1) && println(updateLine)
 
             if delta < 0
                 # If new keyboard is better (less objective is better)
@@ -143,13 +144,15 @@ function runSA(;
         end
     end
 
-    @spawn :interactive drawKeyboard(bestGenome, "data/result/final/$threadId.png", keyboardData, lk)
+    drawKeyboard(bestGenome, "data/result/final/$threadId.png", keyboardData, lk)
 
     return bestGenome, bestObjective
 end
 
-frequencyGenome, freqKeyMap = createFrequencyGenome(dataStats, keyboardData)
+frequencyGenome, freqKeyMap = createFrequencyGenome(dataStats, keyboardData, frequencyRewardArgs)
 drawFrequencyKeyboard("data/frequencyKeyboard.png", frequencyGenome, freqKeyMap, keyboardData, useFrequencyColorMap=false)
+
+const verbose = false
 
 const nts = nthreads()
 
@@ -182,7 +185,7 @@ objectives = Dict{Any,Any}()
                 numIterations=numIterations,
                 maxIterations=maxIterations,
                 temperatureKeyShuffleMultiplier=temperatureKeyShuffleMultiplier,
-                verbose=false
+                verbose=verbose
             )
 
             # TODO Use Distributed.@distributed to get results
@@ -193,8 +196,8 @@ objectives = Dict{Any,Any}()
 
     bestI, bestG, bestO = reduce(((i, g, o), (i2, g2, o2)) -> o < o2 ? (i, g, o) : (i2, g2, o2), ((i, genomes[i], objectives[i]) for i in filter(x -> haskey(genomes, x), eachindex(genomes))))
 
-    println("Best overall: $bestI; Score: $bestO")
-    drawKeyboard(bestG, "data/result/bestOverall - $bestI.png", keyboardData)
+    verbose && println("Best overall: $bestI; Score: $bestO")
+    drawKeyboard(bestG, "data/result/bestOverall.png", keyboardData)
 
     cptree("data/result", "data/lastRuns/$runId")
 end

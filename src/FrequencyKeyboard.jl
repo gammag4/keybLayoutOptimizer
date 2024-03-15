@@ -3,22 +3,18 @@ module FrequencyKeyboard
 using Setfield: @set
 using LinearAlgebra: normalize
 
-include("Presets.jl")
 include("Utils.jl")
 include("DrawKeyboard.jl")
 
-using .Presets: frequencyKeyboardArgs
 using .Utils: conditionalSplit
 using .DrawKeyboard: computeKeyboardColorMap, drawKeyboard
 
 export createFrequencyGenome, drawFrequencyKeyboard
 
-const (; xBias, distanceBias, leftHandBias, rowCPSBias, keyboardSize) = frequencyKeyboardArgs
-const anskbs = 1 / keyboardSize
-
 # TODO Optimize code here: Change <something> in <list> to dictionary haskey or something
 
-function objective(key, dataStats, keyboardData)
+function objective(key, dataStats, keyboardData, frequencyRewardArgs)
+    (; effortWeighting, xBias, leftHandBias, rowCPSBias, ansKbs) = frequencyRewardArgs
     (; fingersCPS, rowsCPS) = dataStats
     (; layoutMap, handFingers) = keyboardData
 
@@ -27,7 +23,7 @@ function objective(key, dataStats, keyboardData)
 
     # Distance penalty
     dx, dy = x - hx, y - hy
-    distancePenalty = 1 - sqrt((dx * xBias * 2)^2 + (dy * (1 - xBias) * 2)^2) * anskbs
+    distanceReward = 1 - sqrt((dx * xBias * 2)^2 + (dy * (1 - xBias) * 2)^2) * ansKbs
 
     # Finger and row reward
     # TODO change to bounds [0,1] and compute outside function
@@ -36,14 +32,14 @@ function objective(key, dataStats, keyboardData)
     # 1 for right hand, > 1 for left hand
     leftHandReward = 1 - leftHandBias + (2 - handFingers[finger]) * (2 * leftHandBias - 1)
 
-    reward = (fingerReward * (1 - distanceBias) + distancePenalty * distanceBias) * leftHandReward
+    reward = sum((fingerReward, distanceReward) .* effortWeighting) * leftHandReward
     return reward
 end
 
 # Maps key ids to their rewards
-function createFrequencyKeyMap(dataStats, keyboardData)
+function createFrequencyKeyMap(dataStats, keyboardData, frequencyRewardArgs)
     (; layoutMap) = keyboardData
-    return Dict(k => objective(k, dataStats, keyboardData) for k in keys(layoutMap))
+    return Dict(k => objective(k, dataStats, keyboardData, frequencyRewardArgs) for k in keys(layoutMap))
 end
 
 getSorted(keyMap) = map(((c, f),) -> c, sort(by=((c, f),) -> f, collect(keyMap)))
@@ -56,13 +52,13 @@ function getFrequencyKeyMap(keyMap, charFrequency)
     return merge(keyMap1, keyMap2)
 end
 
-function createFrequencyGenome(dataStats, keyboardData)
+function createFrequencyGenome(dataStats, keyboardData, frequencyRewardArgs)
     (; textStats) = dataStats
     (; charFrequency) = textStats
     (; keyMap, getFixedMovableKeyMaps, fixedKeys, fixedKeyMap) = keyboardData
     revFixedKeys = (keyMap[c] for c in fixedKeys) # Keys instead of chars
 
-    rewardKeyMap = createFrequencyKeyMap(dataStats, keyboardData) # Keys to rewards from entire layout
+    rewardKeyMap = createFrequencyKeyMap(dataStats, keyboardData, frequencyRewardArgs) # Keys to rewards from entire layout
     freqKeyMap, _ = conditionalSplit(((k, v),) -> k in values(keyMap), rewardKeyMap)
     _, movableFreqKeyMap = conditionalSplit(((k, v),) -> k in revFixedKeys, freqKeyMap)
 

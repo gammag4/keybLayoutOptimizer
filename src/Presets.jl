@@ -7,14 +7,16 @@ include("DataProcessing.jl")
 include("DataStats.jl")
 include("KeyboardGenerator.jl")
 include("DrawKeyboard.jl")
+include("Types.jl")
 
 using .Utils: conditionalSplit, dictToArray
 using .DataProcessing: processDataFolderIntoTextFile
 using .DataStats: computeStats
 using .KeyboardGenerator: layoutGenerator, keyMapGenerator, sp, vsp
 using .DrawKeyboard: computeKeyboardColorMap
+using .Types: RewardArgs, FrequencyRewardArgs, LayoutKey, KeyboardData, GPUArgs
 
-export runId, randomSeed, textData, dataStats, rewardArgs, algorithmArgs, frequencyKeyboardArgs, keyboardData, LayoutKey, gpuArgs
+export runId, randomSeed, textData, dataStats, rewardArgs, algorithmArgs, frequencyRewardArgs, keyboardData, gpuArgs
 
 # TODO Turn all this into a function
 
@@ -101,16 +103,6 @@ const numLayoutKeys = length(layoutMap)
 const numFixedKeys = length(fixedKeyMap)
 const numMovableKeys = length(movableKeyMap)
 
-const rewardArgs = (
-    effortWeighting=NTuple{6,Float64}((0.7, 1, 1, 0.4, 0.2, 0.15)), # dist, double finger, single hand, right hand, finger cps, row cps
-    xBias=0.7, # Lateral movement penalty
-    distanceEffort=1, # Always positive. At 2, distance penalty is squared
-    doubleFingerEffort=1, # Positive prevents using same finger more than once
-    singleHandEffort=1, # Positive prefers double hand, negative prefers single hand
-    rightHandEffort=1, # Right hand also uses the mouse
-    keyboardSize=16,
-)
-
 # Total number of iterations will be -epoch * log(t) / log(coolingRate)
 const algorithmArgs = (
     temperature=500,
@@ -120,37 +112,28 @@ const algorithmArgs = (
     temperatureKeyShuffleMultiplier=0.01 # Is multiplied by temperature to give number of keys shuffled (for 0.01 and t=1000, 10 keys shuffled)
 )
 
-# [0,1], 0.5 is equal for both
-const frequencyKeyboardArgs = (
-    xBias=0.7,
-    distanceBias=0.3,
-    leftHandBias=0.53,
+const keyboardSize = 16
+
+const frequencyRewardArgs = FrequencyRewardArgs(
+    effortWeighting=NTuple{2,Float64}((0.3, 0.7)), # dist, finger
+    xBias=0.7, # [0,1], 0.5 is equal for both
+    leftHandBias=0.53, # [0,1], 0.5 is equal for both
     rowCPSBias=(1, 1.3, 0.8, 1, 1, 1),
-    keyboardSize=16,
+    ansKbs=1 / keyboardSize,
+)
+
+const rewardArgs = RewardArgs(
+    effortWeighting=NTuple{6,Float64}((0.7, 1, 1, 0.4, 0.2, 0.15)), # dist, double finger, single hand, right hand, finger cps, row cps
+    xBias=0.95, # Lateral movement penalty
+    distanceEffort=1.5, # Always positive. At 2, distance penalty is squared
+    doubleFingerEffort=1, # Positive prevents using same finger more than once
+    singleHandEffort=1, # Positive prefers double hand, negative prefers single hand
+    rightHandEffort=1, # Right hand also uses the mouse
+    nonNeighborsEffort=0, # Penalty if keys for [], <> and () are not neighbors (0 is no penalty)
+    ansKbs=1 / keyboardSize,
 )
 
 using Colors
-
-const LayoutKey = Tuple{NTuple{4,Float64},NTuple{2,Int},Int}
-
-struct KeyboardData
-    keyboardColorMap::Dict{Char,HSV}
-    layoutMap::Dict{Int,LayoutKey}
-    keyMapCharacters::Set{Char}
-    keyMap::Dict{Char,Int}
-    noCharKeyMap::Dict{String,Int}
-    fixedKeyMap::Dict{Char,Int}
-    movableKeyMap::Dict{Char,Int}
-    fixedKeys::Vector{Char}
-    movableKeys::Vector{Char}
-    getFixedMovableKeyMaps::typeof(getFixedMovableKeyMaps)
-    handFingers::Vector{Int}
-    numFingers::Int
-    numKeys::Int
-    numLayoutKeys::Int
-    numFixedKeys::Int
-    numMovableKeys::Int
-end
 
 const keyboardData = KeyboardData(
     keyboardColorMap,
@@ -171,26 +154,15 @@ const keyboardData = KeyboardData(
     numMovableKeys,
 )
 
-struct GPUArgs
-    numThreadsInBlock::Int
-    text::CuArray{Char,1}
-    layoutMap::CuArray{LayoutKey,1}
-    handFingers::CuArray{Int,1}
-    fingerEffort::CuArray{Float64,1}
-    rowEffort::CuArray{Float64,1}
-end
-
-const numThreadsInBlock = 512
-
 const (; fingerEffort, rowEffort) = dataStats
 
 const gpuArgs = GPUArgs(
-    numThreadsInBlock,
-    CuArray(collect(textData)),
-    CuArray(dictToArray(layoutMap)),
-    CuArray(handFingers),
-    CuArray(fingerEffort),
-    CuArray(rowEffort),
+    numThreadsInBlock=512,
+    text=CuArray(collect(textData)),
+    layoutMap=CuArray(dictToArray(layoutMap)),
+    handFingers=CuArray(handFingers),
+    fingerEffort=CuArray(fingerEffort),
+    rowEffort=CuArray(rowEffort),
 )
 
 end

@@ -1,15 +1,15 @@
 module DataStats
 
-using Statistics: mean, std
+include("Utils.jl")
+
+using .Utils: minMaxScale, lpTransform, zscore
 
 export computeStats
 
 # TODO Reverse reward
-function computeEffort(arrCPM)
-    m = mean(arrCPM)
-    st = std(arrCPM)
-    nzScore = -(arrCPM .- m) ./ st # negative since higher is better
-    effort = nzScore .- minimum(nzScore)
+function computeEffort(arrCPS)
+    nzScore = -zscore(arrCPS) # negative since higher is better
+    effort = nzScore .- minimum(nzScore) # Smallest is 0
     return effort
 end
 
@@ -64,8 +64,8 @@ function computeStats(;
     return DataStatsType(
         fingersCPS,
         rowsCPS,
-        computeEffort(fingersCPS),
-        computeEffort(rowsCPS),
+        minMaxScale(computeEffort(fingersCPS), 0, 1),
+        minMaxScale(computeEffort(rowsCPS), 0, 1),
         computeTextStats(text),
     )
 end
