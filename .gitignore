@@ -1,4 +1,4 @@
 *.png
 *.txt
-/data/*
-_raw_dataset/
+data/
+persistent/

@@ -3,7 +3,7 @@ module Utils
 using Statistics: mean, std
 using Base.Iterators: flatten, take, drop, repeated
 
-export conditionalSplit, lpadIter, rpadIter, mergeIter
+export conditionalSplit, lpadIter, rpadIter, mergeIter, dictToNamedTuple
 
 function conditionalSplit(f, v)
     a = typeof(v)()
@@ -67,5 +67,7 @@ function zscore(v)
     st = std(v)
     return (x -> (x - m) / st).(v)
 end
+
+dictToNamedTuple(d) = NamedTuple{Tuple(Symbol.(keys(d)))}(values(d))
 
 end

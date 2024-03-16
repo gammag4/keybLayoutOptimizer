@@ -8,6 +8,8 @@ using Printf: @sprintf
 using Random: rand
 using StableRNGs: LehmerRNG
 using BenchmarkTools: @time
+using CUDA: CuArray
+using JSON: parse as jparse
 
 include("src/DataProcessing.jl")
 include("src/DrawKeyboard.jl")
@@ -22,21 +24,154 @@ include("src/Genome.jl")
 include("src/KeyboardObjective.jl")
 include("src/SimulatedAnnealing.jl")
 
-using .Presets: runId, randomSeed, dataStats, keyboardData, frequencyRewardArgs, algorithmArgs, cpuArgs, gpuArgs, rewardArgs, dataPaths, rewardKeyMap, frequencyGenome, freqKeyMap
-using .Types: GPUArgs, CPUArgs
-using .FrequencyKeyboard: drawFrequencyKeyboard
-using .DrawKeyboard: drawKeyboard
+using ..Utils: conditionalSplit, dictToArray, dictToNamedTuple, minMaxScale
+using ..DataProcessing: processDataFolderIntoTextFile
+using ..DataStats: computeStats
+using ..KeyboardGenerator: layoutGenerator, keyMapGenerator
+using ..DrawKeyboard: computeKeyboardColorMap
+using ..Types: RewardArgs, FrequencyRewardArgs, LayoutKey, KeyboardData, CPUArgs, GPUArgs
+using ..FrequencyKeyboard: createFrequencyKeyMap, createFrequencyGenome, drawFrequencyKeyboard
 using .KeyboardObjective: objectiveFunction
 using .SimulatedAnnealing: chooseSA
 
-useGPU = true
+function main()
+    jsonData = dictToNamedTuple(open(f -> jparse(f), "persistent/data.json", "r"))
+    (;
+        textPath,
+        dataPaths,
+        keyMap,
+        noCharKeyMap,
+        randomSeed,
+        dataStats,
+        keyboardLayout,
+        fixedKeys,
+        handFingers,
+        algorithmArgs,
+        keyboardSize,
+        frequencyRewardArgs,
+        rewardArgs,
+    ) = jsonData
 
-const (lastRunsPath, finalResultsPath) = dataPaths
-const (; keyMap) = keyboardData
+    dataPaths = dictToNamedTuple(dataPaths)
+    (; persistentPath, rawDataPath, dataPath, lastRunsPath, finalResultsPath, startResultsPath, endResultsPath) = dataPaths
 
-const (; numKeyboards) = algorithmArgs
+    # Creating folders and removing old data
+    map(i -> rm(joinpath(dataPath, "$i"), recursive=true), filter(s -> occursin(r"result", s), readdir(dataPath)))
+    for path in dataPaths
+        mkpath(path)
+    end
+    runId = 1 + last(sort(vcat([0], collect(map(i -> parse(Int, replace(i, r"[^0-9]" => "")), readdir(lastRunsPath))))))
 
-function multipleSA(numKeyboards, useGPU)
+
+    # TODO Split layout into list of keys with same size so that they can be shuffled
+    keyMap = dictToNamedTuple(keyMap)
+    keyMap = keyMapGenerator(
+        startIndices=Vector{Int}(keyMap.startIndices),
+        keys=Vector{String}(keyMap.keys)
+    )
+    keyMapCharacters = Set(keys(keyMap))
+    noCharKeyMap = dictToNamedTuple(noCharKeyMap)
+    noCharKeyMap = keyMapGenerator(
+        startIndices=Vector{Int}(noCharKeyMap.startIndices),
+        keys=Vector{Vector{String}}(noCharKeyMap.keys)
+    )
+
+    # Processing data
+    processDataFolderIntoTextFile(rawDataPath, textPath, keyMapCharacters, overwrite=false, verbose=true)
+
+    # Getting data
+    textData = open(io -> read(io, String), textPath, "r")
+
+    (; fingersCPS, rowsCPS) = dictToNamedTuple(dataStats)
+    dataStats = computeStats(;
+        text=textData,
+        fingersCPS=Vector{Float64}(fingersCPS),
+        rowsCPS=Vector{Float64}(rowsCPS)
+    )
+
+    (; textStats) = dataStats
+    (; charFrequency) = textStats
+    keyboardColorMap = computeKeyboardColorMap(charFrequency)
+
+    layoutMap = layoutGenerator(; dictToNamedTuple(keyboardLayout)...)
+
+    fixedKeys = Set(fixedKeys)
+    # const fixedKeys = collect("\t\n ") # Numbers also change
+    getFixedMovableKeyMaps(keyMap) = conditionalSplit(((k, v),) -> k in fixedKeys, keyMap)
+    fixedKeyMap, movableKeyMap = getFixedMovableKeyMaps(keyMap)
+    movableKeys = [k for (k, v) in movableKeyMap]
+    handFingers = Vector{Int}(handFingers)
+    numFingers = length(handFingers)
+    numKeys = length(keyMap)
+    numLayoutKeys = length(layoutMap)
+    numFixedKeys = length(fixedKeyMap)
+    numMovableKeys = length(movableKeyMap)
+
+    # Total number of iterations will be -epoch * log(t) / log(coolingRate)
+    algorithmArgs = dictToNamedTuple(algorithmArgs)
+
+    (; effortWeighting, xBias, leftHandBias, rowCPSBias) = dictToNamedTuple(frequencyRewardArgs)
+    frequencyRewardArgs = FrequencyRewardArgs(;
+        effortWeighting=NTuple{2,Float64}(effortWeighting),
+        xBias=xBias,
+        leftHandBias=leftHandBias,
+        rowCPSBias=NTuple{6,Float64}(rowCPSBias),
+        ansKbs=1 / keyboardSize,
+    )
+
+    (; effortWeighting, doubleFingerEffort, singleHandEffort, rewardMapEffort) = dictToNamedTuple(rewardArgs)
+    rewardArgs = RewardArgs(;
+        effortWeighting=NTuple{3,Float64}(effortWeighting),
+        doubleFingerEffort=doubleFingerEffort,
+        singleHandEffort=singleHandEffort,
+        rewardMapEffort=rewardMapEffort
+    )
+
+    keyboardData = KeyboardData(
+        keyboardColorMap,
+        layoutMap,
+        keyMapCharacters,
+        keyMap,
+        noCharKeyMap,
+        fixedKeyMap,
+        movableKeyMap,
+        fixedKeys,
+        movableKeys,
+        getFixedMovableKeyMaps,
+        handFingers,
+        numFingers,
+        numKeys,
+        numLayoutKeys,
+        numFixedKeys,
+        numMovableKeys,
+    )
+
+    rewardKeyMap = createFrequencyKeyMap(dataStats, keyboardData, frequencyRewardArgs)
+    frequencyGenome, freqKeyMap = createFrequencyGenome(dataStats, keyboardData, rewardKeyMap)
+
+    cpuArgs = CPUArgs(
+        text=collect(textData),
+        layoutMap=dictToArray(layoutMap),
+        handFingers=handFingers,
+        rewardMap=minMaxScale(dictToArray(rewardKeyMap), 1, 0),
+    )
+
+    gpuArgs = GPUArgs(
+        numThreadsInBlock=512,
+        text=CuArray(collect(textData)),
+        layoutMap=CuArray(dictToArray(layoutMap)),
+        handFingers=CuArray(handFingers),
+        rewardMap=CuArray(minMaxScale(dictToArray(rewardKeyMap), 1, 0)),
+    )
+
+    useGPU = true
+    (; numKeyboards) = algorithmArgs
+
+    # TODO Use gpu in objective function
+    # Run julia --threads=<num threads your processor can run -1>,1 --project=. main.jl
+    # Example for 12 core processor, 2 threads per core, total 24 threads: julia --threads=23,1 --project=. main.jl
+    # Genomes are keymaps
+
     computationArgs = useGPU ? gpuArgs : cpuArgs
 
     genomes = Dict{Any,Any}()
@@ -72,8 +207,4 @@ function multipleSA(numKeyboards, useGPU)
     cptree(finalResultsPath, joinpath(lastRunsPath, "$runId"))
 end
 
-# TODO Use gpu in objective function
-# Run julia --threads=<num threads your processor can run -1>,1 --project=. main.jl
-# Example for 12 core processor, 2 threads per core, total 24 threads: julia --threads=23,1 --project=. main.jl
-# Genomes are keymaps
-@time multipleSA(numKeyboards, useGPU)
+main()

@@ -2,12 +2,9 @@ module KeyboardGenerator
 
 using ..Utils: rpadIter, rpadIterArr
 
-export sp, vsp, layoutGenerator, keyMapGenerator
+export layoutGenerator, keyMapGenerator
 
-const sp = -2
-const vsp = -4
-
-removeVSp(rowslist) = filter(x -> x[1][1] != vsp, rowslist[1])
+removeVSp(rowslist) = filter(x -> x[1][1] != "vsp", rowslist[1])
 getCurrentRow(y) = floor(Int, y)
 getNumRows(rowslist) = getCurrentRow(rowslist[2][2]) + length(removeVSp(rowslist))
 getTotalNumRows(rowslistlist) = maximum(getNumRows.(rowslistlist))
@@ -19,7 +16,7 @@ function getLayoutRow(row, x, y)
     for batch in row
         # number of keys in batch, width of each key, delta position in y axis (when not aligned vertically to others), height (default 1)
         (n, w, dh, h) = rpadIterArr(batch, 4, [1, 0, 1])
-        if n == sp
+        if n == "sp"
             pos += w
             continue
         end
@@ -38,7 +35,7 @@ function getLayoutRowsList(rowslist)
 
     for row in rowslist
         (n, l) = rpadIter(row[1], 2, 0)
-        if n == vsp
+        if n == "vsp"
             pos += l
             continue
         end
