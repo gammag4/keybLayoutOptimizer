@@ -18,7 +18,8 @@ function objective(key, dataStats, keyboardData, frequencyRewardArgs)
 
     # Distance penalty
     dx, dy = x - hx, y - hy
-    distanceReward = 1 - sqrt((dx * xBias * 2)^2 + (dy * (1 - xBias) * 2)^2) * ansKbs
+    distanceReward = sqrt((dx * xBias * 2)^2 + (dy * (1 - xBias) * 2)^2) * ansKbs
+    distanceReward = 2^1.5 - (1 + distanceReward)^1.5 / (2^1.5)
 
     # Finger and row reward
     # TODO change to bounds [0,1] and compute outside function
@@ -34,6 +35,7 @@ end
 # Maps key ids to their rewards
 function createFrequencyKeyMap(dataStats, keyboardData, frequencyRewardArgs)
     (; layoutMap) = keyboardData
+    # TODO Map to [0, 1]
     return Dict(k => objective(k, dataStats, keyboardData, frequencyRewardArgs) for k in keys(layoutMap))
 end
 

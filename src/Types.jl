@@ -8,14 +8,10 @@ using Colors: HSV
 export RewardArgs, FrequencyRewardArgs, LayoutKey, KeyboardData, CPUArgs, GPUArgs
 
 @with_kw struct RewardArgs
-    effortWeighting::NTuple{6,Float64}
-    xBias::Float64
-    distanceEffort::Float64
+    effortWeighting::NTuple{3,Float64}
     doubleFingerEffort::Float64
     singleHandEffort::Float64
-    rightHandEffort::Float64
-    nonNeighborsEffort::Float64
-    ansKbs::Float64
+    rewardMapEffort::Float64
 end
 
 @adapt_structure RewardArgs
@@ -53,8 +49,7 @@ end
     text::Vector{Char}
     layoutMap::Vector{LayoutKey}
     handFingers::Vector{Int}
-    fingerEffort::Vector{Float64}
-    rowEffort::Vector{Float64}
+    rewardMap::Vector{Float64}
 end
 
 @with_kw struct GPUArgs
@@ -62,8 +57,7 @@ end
     text::CuArray{Char}
     layoutMap::CuArray{LayoutKey}
     handFingers::CuArray{Int}
-    fingerEffort::CuArray{Float64}
-    rowEffort::CuArray{Float64}
+    rewardMap::CuArray{Float64}
 end
 
 @adapt_structure GPUArgs

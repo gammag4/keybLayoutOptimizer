@@ -50,6 +50,18 @@ minMaxScale(v) = minMaxScale(v, 0, 1)
 
 lpTransform(v, k) = minMaxScale(minMaxScale(v, 0, 1) .^ k, minimum(v), maximum(v))
 
+function splitDict(d)
+    l = length(d)
+    a, b = Vector{keytype(d)}(undef, l), Vector{valtype(d)}(undef, l)
+    i = 1
+    for p in d
+        a[i], b[i] = p
+        i += 1
+    end
+
+    return a, b
+end
+
 function zscore(v)
     m = mean(v)
     st = std(v)

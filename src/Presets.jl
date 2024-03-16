@@ -2,7 +2,7 @@ module Presets
 
 using CUDA: CuArray
 
-using ..Utils: conditionalSplit, dictToArray
+using ..Utils: conditionalSplit, dictToArray, minMaxScale
 using ..DataProcessing: processDataFolderIntoTextFile
 using ..DataStats: computeStats
 using ..KeyboardGenerator: layoutGenerator, keyMapGenerator, sp, vsp
@@ -115,7 +115,7 @@ const numMovableKeys = length(movableKeyMap)
 const algorithmArgs = (
     t=500, # Temperature
     e=20, # Epoch size (number of iterations in each epoch, before going down in temperature
-    nIter=10000, # Number of iterations
+    nIter=25000, # Number of iterations
     tShuffleMultiplier=0.01, # Is multiplied by temperature to give number of keys shuffled (for 0.01 and t=1000, 10 keys shuffled)
     numKeyboards=1 # Number of keyboards to generate
 )
@@ -124,21 +124,18 @@ const keyboardSize = 16
 
 const frequencyRewardArgs = FrequencyRewardArgs(
     effortWeighting=NTuple{2,Float64}((0.3, 0.7)), # dist, finger
-    xBias=0.75, # [0,1], 0.5 is equal for both
-    leftHandBias=0.503, # [0,1], 0.5 is equal for both
-    rowCPSBias=(1, 1, 0.8, 1, 1, 1),
+    xBias=0.57, # [0,1], 0.5 is equal for both
+    leftHandBias=0.5017, # [0,1], 0.5 is equal for both
+    rowCPSBias=(1, 1.4, 0.7, 1, 1, 1),
     ansKbs=1 / keyboardSize,
 )
 
 const rewardArgs = RewardArgs(
-    effortWeighting=NTuple{6,Float64}((0.7, 1, 0.2, 0.3, 0.2, 0.15)), # dist, double finger, single hand, right hand, finger cps, row cps
-    xBias=0.95, # Lateral movement penalty
-    distanceEffort=1.5, # Always positive. At 2, distance penalty is squared
+    effortWeighting=NTuple{3,Float64}((0, 0, 1.0)), # double finger, single hand, reward map
     doubleFingerEffort=1, # Positive prevents using same finger more than once
     singleHandEffort=1, # Positive prefers double hand, negative prefers single hand
-    rightHandEffort=1, # Right hand also uses the mouse
-    nonNeighborsEffort=0, # Penalty if keys for [], <> and () are not neighbors (0 is no penalty)
-    ansKbs=1 / keyboardSize,
+    rewardMapEffort=1,
+    # nonNeighborsEffort=0, # Penalty if keys for [], <> and () are not neighbors (0 is no penalty)
 )
 
 using Colors
@@ -171,8 +168,7 @@ const cpuArgs = CPUArgs(
     text=collect(textData),
     layoutMap=dictToArray(layoutMap),
     handFingers=handFingers,
-    fingerEffort=fingerEffort,
-    rowEffort=rowEffort,
+    rewardMap=minMaxScale(dictToArray(rewardKeyMap), 1, 0),
 )
 
 const gpuArgs = GPUArgs(
@@ -180,8 +176,7 @@ const gpuArgs = GPUArgs(
     text=CuArray(collect(textData)),
     layoutMap=CuArray(dictToArray(layoutMap)),
     handFingers=CuArray(handFingers),
-    fingerEffort=CuArray(fingerEffort),
-    rowEffort=CuArray(rowEffort),
+    rewardMap=CuArray(minMaxScale(dictToArray(rewardKeyMap), 1, 0)),
 )
 
 end

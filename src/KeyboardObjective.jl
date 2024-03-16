@@ -9,27 +9,20 @@ export objectiveFunction
 
 # TODO Compute rewards in bulk for all keys and use the whole data to compute, normalize rewards and compute all reward
 
-function threadExec(i, genome, rewardArgs, text, layoutMap, handFingers, fingerEffort, rowEffort)
+function threadExec(i, genome, rewardArgs, text, layoutMap, handFingers, rewardMap)
     (;
         effortWeighting,
-        xBias,
-        distanceEffort,
         doubleFingerEffort,
         singleHandEffort,
-        rightHandEffort,
-        ansKbs,
+        rewardMapEffort,
     ) = rewardArgs
-
-    # Thread memory:
-    # layoutMap, handfingers, text[i:i + 1], fingerEffort, rowEffort, genome, xBias, ansKbs
 
     char1 = text[i]
     char2 = text[i+1]
     key1 = genome[Int(char1)]
     key2 = genome[Int(char2)]
-    (x1, y1, _, _), (finger1, _), _ = layoutMap[key1]
-    (x2, y2, _, _), (finger2, home), row = layoutMap[key2]
-    (homeX, homeY, _, _), _, _ = layoutMap[home]
+    _, (finger1, _), _ = layoutMap[key1]
+    _, (finger2, _), _ = layoutMap[key2]
     hand1 = handFingers[finger1]
     hand2 = handFingers[finger2]
 
@@ -38,42 +31,31 @@ function threadExec(i, genome, rewardArgs, text, layoutMap, handFingers, fingerE
     # hence, not changing the ordering of the set of possible genomes, so it is useless computation
     sameFinger = finger1 == finger2 # Used same finger as previous
     sameHand = hand1 == hand2 # Used same hand as previous
-    rightHand = hand2 == 2 # Used right hand
 
-    # If same finger, uses old position, else, uses home position (assuming fingers go home when you use another finger)
-    x1, y1 = sameFinger * x1 + (!sameFinger) * homeX, sameFinger * y1 + (!sameFinger) * homeY
-
-    # Distance (normalized by keyboard size)
-    dx, dy = x2 - x1, y2 - y1
-    distance = sqrt((dx * xBias * 2)^2 + (dy * (1 - xBias) * 2)^2) * ansKbs
-
-    distancePenalty = (distance + 1)^distanceEffort - 1 # This way, distanceEffort always increases even if in [0, 1]
     doubleFingerPenalty = sameFinger * doubleFingerEffort
     singleHandPenalty = sameHand * singleHandEffort
-    rightHandPenalty = rightHand * rightHandEffort
-    fingerPenalty = fingerEffort[finger2]
-    rowPenalty = rowEffort[row]
+    rewardMapPenalty = rewardMap[key2] * rewardMapEffort
 
     # TODO Put in output array instead of summing here
     # Combined weighting
-    penalties = (distancePenalty, doubleFingerPenalty, singleHandPenalty, rightHandPenalty, fingerPenalty, rowPenalty) .* effortWeighting
+    penalties = (doubleFingerPenalty, singleHandPenalty, rewardMapPenalty) .* effortWeighting
     return sum(penalties)
 end
 
-function cudaCall!(out, genome, rewardArgs, text, layoutMap, handFingers, fingerEffort, rowEffort)
+function cudaCall!(out, genome, rewardArgs, text, layoutMap, handFingers, rewardMap)
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     stride = gridDim().x * blockDim().x
     for i in index:stride:(length(text)-1)
-        out[i] = @inbounds threadExec(i, genome, rewardArgs, text, layoutMap, handFingers, fingerEffort, rowEffort)
+        out[i] = @inbounds threadExec(i, genome, rewardArgs, text, layoutMap, handFingers, rewardMap)
     end
 
     return
 end
 
-function cpuCall(genome, rewardArgs, text, layoutMap, handFingers, fingerEffort, rowEffort)
+function cpuCall(genome, rewardArgs, text, layoutMap, handFingers, rewardMap)
     objective = 0.0
     for i in 1:(length(text)-1)
-        objective += threadExec(i, genome, rewardArgs, text, layoutMap, handFingers, fingerEffort, rowEffort)
+        objective += threadExec(i, genome, rewardArgs, text, layoutMap, handFingers, rewardMap)
     end
 
     return objective
@@ -81,13 +63,13 @@ end
 
 # GPU
 function computeRawObjective(genome, computationArgs::GPUArgs, rewardArgs)
-    (; numThreadsInBlock, text, layoutMap, handFingers, fingerEffort, rowEffort) = computationArgs
+    (; numThreadsInBlock, text, layoutMap, handFingers, rewardMap) = computationArgs
 
     out = CuArray{Float64}(undef, length(text) - 1)
 
     blocks = ceil(Int, length(out) / numThreadsInBlock)
     # Last character is not considered, since there is no next to move to
-    @cuda threads = numThreadsInBlock blocks = blocks cudaCall!(out, CuArray{Int}(dictToArray(genome)), rewardArgs, text, layoutMap, handFingers, fingerEffort, rowEffort)
+    @cuda threads = numThreadsInBlock blocks = blocks cudaCall!(out, CuArray{Int}(dictToArray(genome)), rewardArgs, text, layoutMap, handFingers, rewardMap)
 
     # calculate and return objective
     return sum(out)
@@ -95,8 +77,8 @@ end
 
 # CPU
 function computeRawObjective(genome, computationArgs::CPUArgs, rewardArgs)
-    (; text, layoutMap, handFingers, fingerEffort, rowEffort) = computationArgs
-    return cpuCall(dictToArray(genome), rewardArgs, text, layoutMap, handFingers, fingerEffort, rowEffort)
+    (; text, layoutMap, handFingers, rewardMap) = computationArgs
+    return cpuCall(dictToArray(genome), rewardArgs, text, layoutMap, handFingers, rewardMap)
 end
 
 checkNeighbor(char1, char2, genome) = abs(genome[char1] - genome[char2] + 1)
