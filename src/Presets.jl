@@ -8,8 +8,9 @@ using ..DataStats: computeStats
 using ..KeyboardGenerator: layoutGenerator, keyMapGenerator, sp, vsp
 using ..DrawKeyboard: computeKeyboardColorMap
 using ..Types: RewardArgs, FrequencyRewardArgs, LayoutKey, KeyboardData, CPUArgs, GPUArgs
+using ..FrequencyKeyboard: createFrequencyKeyMap, createFrequencyGenome, drawFrequencyKeyboard
 
-export runId, randomSeed, textData, dataStats, rewardArgs, algorithmArgs, frequencyRewardArgs, keyboardData, cpuArgs, gpuArgs, dataPaths
+export runId, randomSeed, textData, dataStats, rewardArgs, algorithmArgs, frequencyRewardArgs, keyboardData, cpuArgs, gpuArgs, dataPaths, rewardKeyMap, frequencyGenome, freqKeyMap
 
 # TODO Turn all this into a function
 
@@ -160,6 +161,9 @@ const keyboardData = KeyboardData(
     numFixedKeys,
     numMovableKeys,
 )
+
+rewardKeyMap = createFrequencyKeyMap(dataStats, keyboardData, frequencyRewardArgs)
+frequencyGenome, freqKeyMap = createFrequencyGenome(dataStats, keyboardData, rewardKeyMap)
 
 const (; fingerEffort, rowEffort) = dataStats
 

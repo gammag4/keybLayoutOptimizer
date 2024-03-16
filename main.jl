@@ -22,9 +22,9 @@ include("src/Genome.jl")
 include("src/KeyboardObjective.jl")
 include("src/SimulatedAnnealing.jl")
 
-using .Presets: runId, randomSeed, dataStats, keyboardData, frequencyRewardArgs, algorithmArgs, cpuArgs, gpuArgs, rewardArgs, dataPaths
+using .Presets: runId, randomSeed, dataStats, keyboardData, frequencyRewardArgs, algorithmArgs, cpuArgs, gpuArgs, rewardArgs, dataPaths, rewardKeyMap, frequencyGenome, freqKeyMap
 using .Types: GPUArgs, CPUArgs
-using .FrequencyKeyboard: createFrequencyKeyMap, createFrequencyGenome, drawFrequencyKeyboard
+using .FrequencyKeyboard: drawFrequencyKeyboard
 using .DrawKeyboard: drawKeyboard
 using .KeyboardObjective: objectiveFunction
 using .SimulatedAnnealing: chooseSA
@@ -36,10 +36,6 @@ const (; keyMap) = keyboardData
 
 const (; numKeyboards) = algorithmArgs
 
-rewardKeyMap = createFrequencyKeyMap(dataStats, keyboardData, frequencyRewardArgs)
-frequencyGenome, freqKeyMap = createFrequencyGenome(dataStats, keyboardData, rewardKeyMap)
-drawFrequencyKeyboard(joinpath(finalResultsPath, "frequencyKeyboard.png"), frequencyGenome, freqKeyMap, keyboardData, useFrequencyColorMap=true)
-
 function multipleSA(numKeyboards, useGPU)
     computationArgs = useGPU ? gpuArgs : cpuArgs
 
@@ -49,6 +45,9 @@ function multipleSA(numKeyboards, useGPU)
     #genomeGenerator=() -> shuffleKeyMap(rngs[i], keyMap, fixedKeys)
     generators = [() -> frequencyGenome for _ in 1:numKeyboards]
     baselineScore = objectiveFunction(keyMap, computationArgs, rewardArgs)
+
+    println("Drawing frequency keymap...")
+    drawFrequencyKeyboard(joinpath(finalResultsPath, "frequencyKeyboard.png"), frequencyGenome, freqKeyMap, keyboardData, useFrequencyColorMap=true)
 
     println(@sprintf "Raw baseline: %.2f" baselineScore)
     println("From here everything is reletive with + % worse and - % better than this baseline")
