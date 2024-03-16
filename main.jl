@@ -112,7 +112,7 @@ end
 const (lastRunsPath, finalResultsPath) = dataPaths
 const (; keyMap) = keyboardData
 
-numKeyboards = 20
+const (; numKeyboards) = algorithmArgs
 rngs = LehmerRNG.(rand(LehmerRNG(randomSeed), 1:typemax(Int), numKeyboards))
 genomes = Dict{Any,Any}()
 objectives = Dict{Any,Any}()

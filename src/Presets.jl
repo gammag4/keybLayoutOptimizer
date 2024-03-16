@@ -121,7 +121,8 @@ const algorithmArgs = (
     t=500, # Temperature
     e=20, # Epoch size (number of iterations in each epoch, before going down in temperature
     nIter=10000, # Number of iterations
-    tShuffleMultiplier=0.01 # Is multiplied by temperature to give number of keys shuffled (for 0.01 and t=1000, 10 keys shuffled)
+    tShuffleMultiplier=0.01, # Is multiplied by temperature to give number of keys shuffled (for 0.01 and t=1000, 10 keys shuffled)
+    numKeyboards=1 # Number of keyboards to generate
 )
 
 const keyboardSize = 16
