@@ -16,18 +16,31 @@ using .KeyboardGenerator: layoutGenerator, keyMapGenerator, sp, vsp
 using .DrawKeyboard: computeKeyboardColorMap
 using .Types: RewardArgs, FrequencyRewardArgs, LayoutKey, KeyboardData, GPUArgs
 
-export runId, randomSeed, textData, dataStats, rewardArgs, algorithmArgs, frequencyRewardArgs, keyboardData, gpuArgs
+export runId, randomSeed, textData, dataStats, rewardArgs, algorithmArgs, frequencyRewardArgs, keyboardData, gpuArgs, dataPaths
 
 # TODO Turn all this into a function
 
-const textpath = "data/dataset.txt" # File to save/get text data
+const dataPath = "data" # Path for generated data (everything here can be deleted)
+const textPath = joinpath(dataPath, "dataset.txt") # File to save/get text data
+
+const lastRunsPath = joinpath(dataPath, "lastRuns") # History of last runs
+const finalResultsPath = joinpath(dataPath, "result") # Results from current run
+const startResultsPath = joinpath(finalResultsPath, "start") # Starting keyboards
+const endResultsPath = joinpath(finalResultsPath, "end") # End keyboards
+
+const dataPaths = (
+    lastRunsPath=lastRunsPath,
+    finalResultsPath=finalResultsPath,
+    startResultsPath=startResultsPath,
+    endResultsPath=endResultsPath,
+)
 
 # TODO Move this
 # Creating folders and removing old data
 map(i -> rm("data/$i", recursive=true), filter(s -> occursin(r"result", s), readdir("data/")))
-mkpath("data/result/first")
-mkpath("data/result/final")
-mkpath("data/lastRuns")
+for path in dataPaths
+    mkpath(path)
+end
 const runId = 1 + last(sort(vcat([0], collect(map(i -> parse(Int, replace(i, r"[^0-9]" => "")), readdir("data/lastRuns/"))))))
 
 # TODO Split layout into list of keys with same size so that they can be shuffled
@@ -45,10 +58,10 @@ const noCharKeyMap = keyMapGenerator(
 
 # TODO Move this
 # Processing data
-processDataFolderIntoTextFile("_raw_dataset", textpath, keyMapCharacters, overwrite=false, verbose=true)
+processDataFolderIntoTextFile("_raw_dataset", textPath, keyMapCharacters, overwrite=false, verbose=true)
 
 # Getting data
-const textData = open(io -> read(io, String), textpath, "r")
+const textData = open(io -> read(io, String), textPath, "r")
 
 const randomSeed = 563622
 
@@ -105,11 +118,10 @@ const numMovableKeys = length(movableKeyMap)
 
 # Total number of iterations will be -epoch * log(t) / log(coolingRate)
 const algorithmArgs = (
-    temperature=500,
-    epoch=20,
-    numIterations=10000,
-    maxIterations=100000,
-    temperatureKeyShuffleMultiplier=0.01 # Is multiplied by temperature to give number of keys shuffled (for 0.01 and t=1000, 10 keys shuffled)
+    t=500, # Temperature
+    e=20, # Epoch size (number of iterations in each epoch, before going down in temperature
+    nIter=10000, # Number of iterations
+    tShuffleMultiplier=0.01 # Is multiplied by temperature to give number of keys shuffled (for 0.01 and t=1000, 10 keys shuffled)
 )
 
 const keyboardSize = 16
@@ -123,7 +135,7 @@ const frequencyRewardArgs = FrequencyRewardArgs(
 )
 
 const rewardArgs = RewardArgs(
-    effortWeighting=NTuple{6,Float64}((0.7, 1, 1, 0.4, 0.2, 0.15)), # dist, double finger, single hand, right hand, finger cps, row cps
+    effortWeighting=NTuple{6,Float64}((0.7, 1, 0.2, 0.3, 0.2, 0.15)), # dist, double finger, single hand, right hand, finger cps, row cps
     xBias=0.95, # Lateral movement penalty
     distanceEffort=1.5, # Always positive. At 2, distance penalty is squared
     doubleFingerEffort=1, # Positive prevents using same finger more than once

@@ -3,11 +3,13 @@ Pkg.activate(@__DIR__)
 Pkg.instantiate()
 
 #using Revise
+using Base.Filesystem: cptree
+using Base.Iterators: countfrom
+using Base.Threads: @spawn, @threads, threadid, nthreads
+using Printf: @sprintf
 using Random: rand
 using StableRNGs: LehmerRNG
-using Base.Threads: @spawn, @threads, threadid, nthreads
 using BenchmarkTools: @time
-using Base.Filesystem: cptree
 
 include("src/Presets.jl")
 include("src/Genome.jl")
@@ -16,55 +18,32 @@ include("src/DrawKeyboard.jl")
 include("src/KeyboardObjective.jl")
 include("src/Utils.jl")
 
-using .Presets: runId, randomSeed, textData, dataStats, keyboardData, rewardArgs, frequencyRewardArgs, algorithmArgs, gpuArgs
+using .Presets: runId, randomSeed, dataStats, keyboardData, frequencyRewardArgs, algorithmArgs, gpuArgs, rewardArgs, dataPaths
 using .Genome: shuffleGenomeKeyMap
 using .FrequencyKeyboard: createFrequencyGenome, drawFrequencyKeyboard
 using .DrawKeyboard: drawKeyboard
 using .KeyboardObjective: objectiveFunction
 using .Utils: dictToArray
 
-const (; fingerEffort, rowEffort, textStats) = dataStats
-const (; charHistogram, charFrequency, usedChars) = textStats
-
-const (;
-    keyMap,
-    fixedKeys
-) = keyboardData
-
-const (;
-    temperature,
-    epoch,
-    numIterations,
-    maxIterations,
-    temperatureKeyShuffleMultiplier
-) = algorithmArgs
-
 # Has probability 0.5 of changing current genome to best when starting new epoch
 # Has probability e^(-delta/t) of changing current genome to a worse when not the best genome
 function runSA(;
-    threadId,
+    keyboardId,
     lk,
     rng,
-    text,
+    gpuArgs,
+    rewardArgs,
+    baselineScore,
     keyboardData,
-    baselineGenome,
     genomeGenerator,
-    temperature,
-    epoch,
-    numIterations,
-    maxIterations,
-    temperatureKeyShuffleMultiplier,
-    verbose,
+    algorithmArgs,
+    dataPaths,
 )
-    coolingRate = (1 / temperature)^(epoch / numIterations)
+    (; fixedKeys) = keyboardData
+    (; t, e, nIter, tShuffleMultiplier) = algorithmArgs
+    (; startResultsPath, endResultsPath) = dataPaths
 
-    mkpath("data/result$threadId")
-
-    verbose && println("Starting run #$runId")
-    verbose && print("Calculating raw baseline: ")
-    baselineScore = objectiveFunction(baselineGenome, gpuArgs, rewardArgs)
-    verbose && println(baselineScore)
-    verbose && println("From here everything is reletive with + % worse and - % better than this baseline \n Note that best layout is being saved as a png at each step. Kill program when satisfied.")
+    coolingRate = (1 / t)^(e / nIter)
 
     currentGenome = genomeGenerator()
     currentObjective = objectiveFunction(currentGenome, gpuArgs, rewardArgs, baselineScore)
@@ -72,69 +51,52 @@ function runSA(;
     bestGenome = currentGenome
     bestObjective = currentObjective
 
-    drawKeyboard(bestGenome, "data/result/first/$threadId.png", keyboardData, lk)
+    drawKeyboard(bestGenome, joinpath(startResultsPath, "$keyboardId.png"), keyboardData, lk)
 
-    baseTemp = temperature
+    baseT = t
     try
-        for iteration in 1:maxIterations
-            if temperature ≤ 1
-                break
-            end
+        for iteration in countfrom(1)
+            t ≤ 1 && break
 
             # TODO Shuffle genome in GPU
             # Create new genome
-            newGenome = shuffleGenomeKeyMap(rng, currentGenome, fixedKeys, floor(Int, temperature * temperatureKeyShuffleMultiplier))
+            newGenome = shuffleGenomeKeyMap(rng, currentGenome, fixedKeys, floor(Int, t * tShuffleMultiplier))
 
             # Asess
             newObjective = objectiveFunction(newGenome, gpuArgs, rewardArgs, baselineScore)
             delta = newObjective - currentObjective
 
-            srid = lpad(threadId, 3, " ")
-            sit = lpad(iteration, 6, " ")
-            stemp = lpad(round(temperature, digits=2), 7, " ")
-            sobj = lpad(round(bestObjective, digits=3), 8, " ")
-            snobj = lpad(round(newObjective, digits=3), 8, " ")
-            updateLine = "Thread: $srid, Iteration: $sit, temp: $stemp, best obj: $sobj, new obj: $snobj"
+            if iteration % 1000 == 1
+                srid = lpad(keyboardId, 3, " ")
+                sit = lpad(iteration, 6, " ")
+                stemp = lpad((@sprintf "%.2f" t), 7, " ")
+                sobj = lpad((@sprintf "%.3f" bestObjective), 8, " ")
+                snobj = lpad((@sprintf "%.3f" newObjective), 8, " ")
+                updateLine = "Thread: $srid, Iteration: $sit, temp: $stemp, best obj: $sobj, new obj: $snobj"
 
-            (iteration % 1000 == 1) && println(updateLine)
+                println(updateLine)
+            end
 
+            # If new keyboard is better (less objective is better)
             if delta < 0
-                # If new keyboard is better (less objective is better)
-
-                currentGenome = newGenome
-                currentObjective = newObjective
-
-                open(f -> write(f, updateLine, "\n"), "data/result/iterationScores$threadId.txt", "a")
+                currentGenome, currentObjective = newGenome, newObjective
 
                 if newObjective < bestObjective
-                    bestGenome = newGenome
-                    bestObjective = newObjective
-
-                    verbose && println("(new best, text being saved)")
-                    #@spawn :interactive drawKeyboard(bestGenome, "data/result$threadId/$iteration.png", keyboardData, lk)
-                    # open("data/result/bestGenomes.txt", "a") do io
-                    #     print(io, iteration, ":")
-                    #     for c in bestGenome
-                    #         print(io, c)
-                    #     end
-                    #     println(io)
-                    # end
+                    bestGenome, bestObjective = newGenome, newObjective
                 end
-            elseif exp(-delta / temperature) > rand(rng)
-                # Changes genome with probability e^(-delta/t)
 
-                currentGenome = newGenome
-                currentObjective = newObjective
+                # Changes genome with probability e^(-delta/t)
+            elseif exp(-delta / t) > rand(rng)
+                currentGenome, currentObjective = newGenome, newObjective
             end
 
             # Starting new epoch
-            if iteration > epoch && (iteration % epoch == 1)
-                temperature = baseTemp * coolingRate^floor(Int, iteration / epoch)
+            if iteration > e && (iteration % e == 1)
+                t = baseT * coolingRate^floor(Int, iteration / e)
 
                 # Changes genome with probability 0.5
                 if rand(rng) < 0.5
-                    currentGenome = bestGenome
-                    currentObjective = bestObjective
+                    currentGenome, currentObjective = bestGenome, bestObjective
                 end
             end
         end
@@ -144,60 +106,57 @@ function runSA(;
         end
     end
 
-    drawKeyboard(bestGenome, "data/result/final/$threadId.png", keyboardData, lk)
+    drawKeyboard(bestGenome, joinpath(endResultsPath, "$keyboardId.png"), keyboardData, lk)
 
     return bestGenome, bestObjective
 end
 
-frequencyGenome, freqKeyMap = createFrequencyGenome(dataStats, keyboardData, frequencyRewardArgs)
-drawFrequencyKeyboard("data/frequencyKeyboard.png", frequencyGenome, freqKeyMap, keyboardData, useFrequencyColorMap=false)
+const (lastRunsPath, finalResultsPath) = dataPaths
 
-const verbose = false
-
+const numKeyboards = nthreads()
 const nts = nthreads()
+const (; keyMap) = keyboardData
 
-const rng = LehmerRNG(randomSeed)
-const rngs = LehmerRNG.(rand(rng, 1:typemax(Int), nts))
+const rngs = LehmerRNG.(rand(LehmerRNG(randomSeed), 1:typemax(Int), numKeyboards))
 genomes = Dict{Any,Any}()
 objectives = Dict{Any,Any}()
+
+frequencyGenome, freqKeyMap = createFrequencyGenome(dataStats, keyboardData, frequencyRewardArgs)
+drawFrequencyKeyboard(joinpath(finalResultsPath, "frequencyKeyboard.png"), frequencyGenome, freqKeyMap, keyboardData, useFrequencyColorMap=false)
 
 # TODO Use gpu in objective function
 # Run julia --threads=<num threads your processor can run -1>,1 --project=. main.jl
 # Example for 12 core processor, 2 threads per core, total 24 threads: julia --threads=23,1 --project=. main.jl
 # Genomes are keymaps
 @time begin
+    baselineScore = objectiveFunction(keyMap, gpuArgs, rewardArgs)
+    println(@sprintf "Raw baseline: %.2f" baselineScore)
+    println("From here everything is reletive with + % worse and - % better than this baseline")
+
+    # TODO Use Distributed.@distributed to get results
     @sync begin
         lk = ReentrantLock()
-        @threads :static for i in 1:nts
-            tid = threadid()
-
-            genome, objective = runSA(
-                threadId=tid,
+        @threads for i in 1:numKeyboards
+            genomes[i], objectives[i] = runSA(
+                keyboardId=i,
                 lk=lk,
                 rng=rngs[i],
-                text=textData,
+                gpuArgs=gpuArgs,
+                rewardArgs=rewardArgs,
+                baselineScore=baselineScore,
                 keyboardData=keyboardData,
-                baselineGenome=keyMap,
                 #genomeGenerator=() -> shuffleKeyMap(rngs[i], keyMap, fixedKeys),
                 genomeGenerator=() -> frequencyGenome,
-                temperature=temperature,
-                epoch=epoch,
-                numIterations=numIterations,
-                maxIterations=maxIterations,
-                temperatureKeyShuffleMultiplier=temperatureKeyShuffleMultiplier,
-                verbose=verbose
+                algorithmArgs=algorithmArgs,
+                dataPaths=dataPaths,
             )
-
-            # TODO Use Distributed.@distributed to get results
-            genomes[tid] = genome
-            objectives[tid] = objective
         end
     end
 
     bestI, bestG, bestO = reduce(((i, g, o), (i2, g2, o2)) -> o < o2 ? (i, g, o) : (i2, g2, o2), ((i, genomes[i], objectives[i]) for i in filter(x -> haskey(genomes, x), eachindex(genomes))))
 
-    verbose && println("Best overall: $bestI; Score: $bestO")
-    drawKeyboard(bestG, "data/result/bestOverall.png", keyboardData)
+    println("Best overall: $bestI; Score: $bestO")
 
-    cptree("data/result", "data/lastRuns/$runId")
+    drawKeyboard(bestG, joinpath(finalResultsPath, "bestOverall.png"), keyboardData)
+    cptree(finalResultsPath, joinpath(lastRunsPath, "$runId"))
 end
