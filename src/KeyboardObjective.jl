@@ -2,14 +2,14 @@ module KeyboardObjective
 
 using CUDA
 
-using ..Types: RewardArgs, LayoutKey
+using ..Types: RewardArgs, LayoutKey, CPUArgs, GPUArgs
 using ..Utils: dictToArray
 
 export objectiveFunction
 
 # TODO Compute rewards in bulk for all keys and use the whole data to compute, normalize rewards and compute all reward
 
-function threadExec!(i::Int, out::CUDA.CuDeviceVector{Float64,1}, genome::CUDA.CuDeviceVector{Int,1}, rewardArgs, text::CUDA.CuDeviceVector{Char,1}, layoutMap::CUDA.CuDeviceVector{LayoutKey,1}, handFingers::CUDA.CuDeviceVector{Int,1}, fingerEffort::CUDA.CuDeviceVector{Float64,1}, rowEffort::CUDA.CuDeviceVector{Float64,1})
+function threadExec(i, genome, rewardArgs, text, layoutMap, handFingers, fingerEffort, rowEffort)
     (;
         effortWeighting,
         xBias,
@@ -57,28 +57,31 @@ function threadExec!(i::Int, out::CUDA.CuDeviceVector{Float64,1}, genome::CUDA.C
     # TODO Put in output array instead of summing here
     # Combined weighting
     penalties = (distancePenalty, doubleFingerPenalty, singleHandPenalty, rightHandPenalty, fingerPenalty, rowPenalty) .* effortWeighting
-    out[i] = sum(penalties)
-
-    return
+    return sum(penalties)
 end
 
-function cudaCall!(out::CUDA.CuDeviceVector{Float64,1}, genome::CUDA.CuDeviceVector{Int,1}, rewardArgs, text::CUDA.CuDeviceVector{Char,1}, layoutMap::CUDA.CuDeviceVector{LayoutKey,1}, handFingers::CUDA.CuDeviceVector{Int,1}, fingerEffort::CUDA.CuDeviceVector{Float64,1}, rowEffort::CUDA.CuDeviceVector{Float64,1})
+function cudaCall!(out, genome, rewardArgs, text, layoutMap, handFingers, fingerEffort, rowEffort)
     index = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     stride = gridDim().x * blockDim().x
     for i in index:stride:(length(text)-1)
-        @inbounds threadExec!(i, out, genome, rewardArgs, text, layoutMap, handFingers, fingerEffort, rowEffort)
+        out[i] = @inbounds threadExec(i, genome, rewardArgs, text, layoutMap, handFingers, fingerEffort, rowEffort)
     end
 
     return
 end
 
-checkNeighbor(char1, char2, genome) = abs(genome[char1] - genome[char2] + 1)
+function cpuCall(genome, rewardArgs, text, layoutMap, handFingers, fingerEffort, rowEffort)
+    objective = 0.0
+    for i in 1:(length(text)-1)
+        objective += threadExec(i, genome, rewardArgs, text, layoutMap, handFingers, fingerEffort, rowEffort)
+    end
 
-checkNeighborsFunc(chars, genome) = sum((checkNeighbor(i, j, genome) for (i, j) in chars)) / length(chars)
+    return objective
+end
 
-function objectiveFunction(genome, gpuArgs, rewardArgs)
-    (; numThreadsInBlock, text, layoutMap, handFingers, fingerEffort, rowEffort) = gpuArgs
-    (; nonNeighborsEffort, ansKbs) = rewardArgs
+# GPU
+function computeRawObjective(genome, computationArgs::GPUArgs, rewardArgs)
+    (; numThreadsInBlock, text, layoutMap, handFingers, fingerEffort, rowEffort) = computationArgs
 
     out = CuArray{Float64}(undef, length(text) - 1)
 
@@ -87,9 +90,26 @@ function objectiveFunction(genome, gpuArgs, rewardArgs)
     @cuda threads = numThreadsInBlock blocks = blocks cudaCall!(out, CuArray{Int}(dictToArray(genome)), rewardArgs, text, layoutMap, handFingers, fingerEffort, rowEffort)
 
     # calculate and return objective
-    objective = sum(out)
+    return sum(out)
+end
+
+# CPU
+function computeRawObjective(genome, computationArgs::CPUArgs, rewardArgs)
+    (; text, layoutMap, handFingers, fingerEffort, rowEffort) = computationArgs
+    return cpuCall(dictToArray(genome), rewardArgs, text, layoutMap, handFingers, fingerEffort, rowEffort)
+end
+
+checkNeighbor(char1, char2, genome) = abs(genome[char1] - genome[char2] + 1)
+
+checkNeighborsFunc(chars, genome) = sum((checkNeighbor(i, j, genome) for (i, j) in chars)) / length(chars)
+
+function objectiveFunction(genome, computationArgs, rewardArgs)
+    # Chooses cpu or gpu based on type of args used
+    objective = computeRawObjective(genome, computationArgs, rewardArgs)
 
     # TODO Move
+    # (; nonNeighborsEffort, ansKbs) = rewardArgs
+
     # # Checks for [], <> and () being neighbors
     # checkNeighbors = checkNeighborsFunc(vcat(["[]", ",."], ["$i$(i+1)" for i in 0:8]), genome)
     # objective = objective * (1 + checkNeighbors * nonNeighborsEffort / ansKbs)
@@ -97,8 +117,8 @@ function objectiveFunction(genome, gpuArgs, rewardArgs)
     return objective
 end
 
-function objectiveFunction(genome, gpuArgs, rewardArgs, baselineScore)
-    objective = (objectiveFunction(genome, gpuArgs, rewardArgs) / baselineScore - 1) * 100
+function objectiveFunction(genome, computationArgs, rewardArgs, baselineScore)
+    objective = (objectiveFunction(genome, computationArgs, rewardArgs) / baselineScore - 1) * 100
     return objective
 end
 

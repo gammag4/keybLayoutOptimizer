@@ -7,9 +7,9 @@ using ..DataProcessing: processDataFolderIntoTextFile
 using ..DataStats: computeStats
 using ..KeyboardGenerator: layoutGenerator, keyMapGenerator, sp, vsp
 using ..DrawKeyboard: computeKeyboardColorMap
-using ..Types: RewardArgs, FrequencyRewardArgs, LayoutKey, KeyboardData, GPUArgs
+using ..Types: RewardArgs, FrequencyRewardArgs, LayoutKey, KeyboardData, CPUArgs, GPUArgs
 
-export runId, randomSeed, textData, dataStats, rewardArgs, algorithmArgs, frequencyRewardArgs, keyboardData, gpuArgs, dataPaths
+export runId, randomSeed, textData, dataStats, rewardArgs, algorithmArgs, frequencyRewardArgs, keyboardData, cpuArgs, gpuArgs, dataPaths
 
 # TODO Turn all this into a function
 
@@ -161,6 +161,14 @@ const keyboardData = KeyboardData(
 )
 
 const (; fingerEffort, rowEffort) = dataStats
+
+const cpuArgs = CPUArgs(
+    text=collect(textData),
+    layoutMap=dictToArray(layoutMap),
+    handFingers=handFingers,
+    fingerEffort=fingerEffort,
+    rowEffort=rowEffort,
+)
 
 const gpuArgs = GPUArgs(
     numThreadsInBlock=512,

@@ -54,4 +54,14 @@ function drawKeyboard(genome, filepath, keyboardData)
     savefig(filepath)
 end
 
+function drawKeyboard(genome, filepath, keyboardData, lk)
+    if isnothing(lk)
+        drawKeyboard(genome, filepath, keyboardData)
+        return
+    end
+    lock(lk) do
+        drawKeyboard(genome, filepath, keyboardData)
+    end
+end
+
 end

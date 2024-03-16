@@ -5,7 +5,7 @@ using CUDA: CuArray
 using Parameters: @with_kw
 using Colors: HSV
 
-export RewardArgs, FrequencyRewardArgs, LayoutKey, KeyboardData, GPUArgs
+export RewardArgs, FrequencyRewardArgs, LayoutKey, KeyboardData, CPUArgs, GPUArgs
 
 @with_kw struct RewardArgs
     effortWeighting::NTuple{6,Float64}
@@ -49,6 +49,14 @@ const LayoutKey = Tuple{NTuple{4,Float64},NTuple{2,Int},Int}
     numMovableKeys::Int
 end
 
+@with_kw struct CPUArgs
+    text::Vector{Char}
+    layoutMap::Vector{LayoutKey}
+    handFingers::Vector{Int}
+    fingerEffort::Vector{Float64}
+    rowEffort::Vector{Float64}
+end
+
 @with_kw struct GPUArgs
     numThreadsInBlock::Int
     text::CuArray{Char}
@@ -57,5 +65,7 @@ end
     fingerEffort::CuArray{Float64}
     rowEffort::CuArray{Float64}
 end
+
+@adapt_structure GPUArgs
 
 end
