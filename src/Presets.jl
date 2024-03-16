@@ -2,19 +2,12 @@ module Presets
 
 using CUDA: CuArray
 
-include("Utils.jl")
-include("DataProcessing.jl")
-include("DataStats.jl")
-include("KeyboardGenerator.jl")
-include("DrawKeyboard.jl")
-include("Types.jl")
-
-using .Utils: conditionalSplit, dictToArray
-using .DataProcessing: processDataFolderIntoTextFile
-using .DataStats: computeStats
-using .KeyboardGenerator: layoutGenerator, keyMapGenerator, sp, vsp
-using .DrawKeyboard: computeKeyboardColorMap
-using .Types: RewardArgs, FrequencyRewardArgs, LayoutKey, KeyboardData, GPUArgs
+using ..Utils: conditionalSplit, dictToArray
+using ..DataProcessing: processDataFolderIntoTextFile
+using ..DataStats: computeStats
+using ..KeyboardGenerator: layoutGenerator, keyMapGenerator, sp, vsp
+using ..DrawKeyboard: computeKeyboardColorMap
+using ..Types: RewardArgs, FrequencyRewardArgs, LayoutKey, KeyboardData, GPUArgs
 
 export runId, randomSeed, textData, dataStats, rewardArgs, algorithmArgs, frequencyRewardArgs, keyboardData, gpuArgs, dataPaths
 

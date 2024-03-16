@@ -1,8 +1,6 @@
 module DataStats
 
-include("Utils.jl")
-
-using .Utils: minMaxScale, lpTransform, zscore
+using ..Utils: minMaxScale, lpTransform, zscore
 
 export computeStats
 

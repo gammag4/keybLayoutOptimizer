@@ -2,9 +2,7 @@ module Genome
 
 using Random: randperm, shuffle
 
-include("Utils.jl")
-
-using .Utils: conditionalSplit
+using ..Utils: conditionalSplit
 
 export shuffleKeyMap, shuffleGenomeKeyMap
 

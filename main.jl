@@ -11,12 +11,18 @@ using Random: rand
 using StableRNGs: LehmerRNG
 using BenchmarkTools: @time
 
-include("src/Presets.jl")
-include("src/Genome.jl")
-include("src/FrequencyKeyboard.jl")
+include("src/DataProcessing.jl")
 include("src/DrawKeyboard.jl")
-include("src/KeyboardObjective.jl")
+include("src/Types.jl")
 include("src/Utils.jl")
+include("src/DataStats.jl")
+include("src/FrequencyKeyboard.jl")
+include("src/KeyboardGenerator.jl")
+include("src/Presets.jl")
+
+include("src/Genome.jl")
+include("src/KeyboardObjective.jl")
+include("src/SimulatedAnnealing.jl")
 
 using .Presets: runId, randomSeed, dataStats, keyboardData, frequencyRewardArgs, algorithmArgs, gpuArgs, rewardArgs, dataPaths
 using .Genome: shuffleGenomeKeyMap

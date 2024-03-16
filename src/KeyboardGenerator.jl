@@ -1,8 +1,6 @@
 module KeyboardGenerator
 
-include("Utils.jl")
-
-using .Utils: rpadIter, rpadIterArr
+using ..Utils: rpadIter, rpadIterArr
 
 export sp, vsp, layoutGenerator, keyMapGenerator
 

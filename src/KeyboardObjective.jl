@@ -2,11 +2,8 @@ module KeyboardObjective
 
 using CUDA
 
-include("Types.jl")
-include("Utils.jl")
-
-using .Types: RewardArgs, LayoutKey
-using .Utils: dictToArray
+using ..Types: RewardArgs, LayoutKey
+using ..Utils: dictToArray
 
 export objectiveFunction
 

@@ -3,11 +3,8 @@ module FrequencyKeyboard
 using Setfield: @set
 using LinearAlgebra: normalize
 
-include("Utils.jl")
-include("DrawKeyboard.jl")
-
-using .Utils: conditionalSplit
-using .DrawKeyboard: computeKeyboardColorMap, drawKeyboard
+using ..Utils: conditionalSplit
+using ..DrawKeyboard: computeKeyboardColorMap, drawKeyboard
 
 export createFrequencyGenome, drawFrequencyKeyboard
 
