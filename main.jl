@@ -67,12 +67,12 @@ function runSA(;
             delta = newObjective - currentObjective
 
             if iteration % 1000 == 1
-                srid = lpad(keyboardId, 3, " ")
+                skid = lpad(keyboardId, 3, " ")
                 sit = lpad(iteration, 6, " ")
                 stemp = lpad((@sprintf "%.2f" t), 7, " ")
                 sobj = lpad((@sprintf "%.3f" bestObjective), 8, " ")
                 snobj = lpad((@sprintf "%.3f" newObjective), 8, " ")
-                updateLine = "Thread: $srid, Iteration: $sit, temp: $stemp, best obj: $sobj, new obj: $snobj"
+                updateLine = "Keyboard: $skid, Iteration: $sit, temp: $stemp, best obj: $sobj, new obj: $snobj"
 
                 println(updateLine)
             end
@@ -113,11 +113,10 @@ end
 
 const (lastRunsPath, finalResultsPath) = dataPaths
 
-const numKeyboards = nthreads()
-const nts = nthreads()
+const numKeyboards = 20
 const (; keyMap) = keyboardData
 
-const rngs = LehmerRNG.(rand(LehmerRNG(randomSeed), 1:typemax(Int), numKeyboards))
+rngs = LehmerRNG.(rand(LehmerRNG(randomSeed), 1:typemax(Int), numKeyboards))
 genomes = Dict{Any,Any}()
 objectives = Dict{Any,Any}()
 
@@ -134,22 +133,26 @@ drawFrequencyKeyboard(joinpath(finalResultsPath, "frequencyKeyboard.png"), frequ
     println("From here everything is reletive with + % worse and - % better than this baseline")
 
     # TODO Use Distributed.@distributed to get results
-    @sync begin
-        lk = ReentrantLock()
-        @threads for i in 1:numKeyboards
-            genomes[i], objectives[i] = runSA(
-                keyboardId=i,
-                lk=lk,
-                rng=rngs[i],
-                gpuArgs=gpuArgs,
-                rewardArgs=rewardArgs,
-                baselineScore=baselineScore,
-                keyboardData=keyboardData,
-                #genomeGenerator=() -> shuffleKeyMap(rngs[i], keyMap, fixedKeys),
-                genomeGenerator=() -> frequencyGenome,
-                algorithmArgs=algorithmArgs,
-                dataPaths=dataPaths,
-            )
+    lk = ReentrantLock()
+    nts = nthreads()
+    for j in 1:nts:numKeyboards
+        @sync begin
+            @threads for k in 1:min(nts, numKeyboards - j + 1)
+                i = j + k - 1
+                genomes[i], objectives[i] = runSA(
+                    keyboardId=i,
+                    lk=lk,
+                    rng=rngs[i],
+                    gpuArgs=gpuArgs,
+                    rewardArgs=rewardArgs,
+                    baselineScore=baselineScore,
+                    keyboardData=keyboardData,
+                    #genomeGenerator=() -> shuffleKeyMap(rngs[i], keyMap, fixedKeys),
+                    genomeGenerator=() -> frequencyGenome,
+                    algorithmArgs=algorithmArgs,
+                    dataPaths=dataPaths,
+                )
+            end
         end
     end
 
