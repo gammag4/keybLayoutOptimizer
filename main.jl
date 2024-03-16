@@ -18,21 +18,21 @@ include("src/Utils.jl")
 include("src/DataStats.jl")
 include("src/FrequencyKeyboard.jl")
 include("src/KeyboardGenerator.jl")
-include("src/Presets.jl")
 
 include("src/Genome.jl")
 include("src/KeyboardObjective.jl")
 include("src/SimulatedAnnealing.jl")
 
-using ..Utils: conditionalSplit, dictToArray, dictToNamedTuple, minMaxScale
-using ..DataProcessing: processDataFolderIntoTextFile
-using ..DataStats: computeStats
-using ..KeyboardGenerator: layoutGenerator, keyMapGenerator
-using ..DrawKeyboard: computeKeyboardColorMap
-using ..Types: RewardArgs, FrequencyRewardArgs, LayoutKey, KeyboardData, CPUArgs, GPUArgs
-using ..FrequencyKeyboard: createFrequencyKeyMap, createFrequencyGenome, drawFrequencyKeyboard
+using .Utils: conditionalSplit, dictToArray, dictToNamedTuple, minMaxScale
+using .DataProcessing: processDataFolderIntoTextFile
+using .DataStats: computeStats
+using .KeyboardGenerator: layoutGenerator, keyMapGenerator
+using .DrawKeyboard: computeKeyboardColorMap
+using .Types: RewardArgs, FrequencyRewardArgs, LayoutKey, KeyboardData, CPUArgs, GPUArgs
+using .FrequencyKeyboard: createFrequencyKeyMap, createFrequencyGenome, drawFrequencyKeyboard
 using .KeyboardObjective: objectiveFunction
 using .SimulatedAnnealing: chooseSA
+using .Genome: shuffleKeyMap
 
 function main()
     jsonData = dictToNamedTuple(open(f -> jparse(f), "persistent/data.json", "r"))
@@ -206,5 +206,3 @@ function main()
     drawKeyboard(bestG, joinpath(finalResultsPath, "bestOverall.png"), keyboardData)
     cptree(finalResultsPath, joinpath(lastRunsPath, "$runId"))
 end
-
-main()
