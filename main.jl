@@ -29,7 +29,6 @@ using .Utils: dictToArray
 # Has probability e^(-delta/t) of changing current genome to a worse when not the best genome
 function runSA(;
     keyboardId,
-    lk,
     rng,
     gpuArgs,
     rewardArgs,
@@ -48,10 +47,9 @@ function runSA(;
     currentGenome = genomeGenerator()
     currentObjective = objectiveFunction(currentGenome, gpuArgs, rewardArgs, baselineScore)
 
-    bestGenome = currentGenome
-    bestObjective = currentObjective
+    bestGenome, bestObjective = currentGenome, currentObjective
 
-    drawKeyboard(bestGenome, joinpath(startResultsPath, "$keyboardId.png"), keyboardData, lk)
+    drawKeyboard(bestGenome, joinpath(startResultsPath, "$keyboardId.png"), keyboardData)
 
     baseT = t
     try
@@ -106,16 +104,15 @@ function runSA(;
         end
     end
 
-    drawKeyboard(bestGenome, joinpath(endResultsPath, "$keyboardId.png"), keyboardData, lk)
+    drawKeyboard(bestGenome, joinpath(endResultsPath, "$keyboardId.png"), keyboardData)
 
     return bestGenome, bestObjective
 end
 
 const (lastRunsPath, finalResultsPath) = dataPaths
-
-const numKeyboards = 20
 const (; keyMap) = keyboardData
 
+numKeyboards = 20
 rngs = LehmerRNG.(rand(LehmerRNG(randomSeed), 1:typemax(Int), numKeyboards))
 genomes = Dict{Any,Any}()
 objectives = Dict{Any,Any}()
@@ -133,27 +130,19 @@ drawFrequencyKeyboard(joinpath(finalResultsPath, "frequencyKeyboard.png"), frequ
     println("From here everything is reletive with + % worse and - % better than this baseline")
 
     # TODO Use Distributed.@distributed to get results
-    lk = ReentrantLock()
-    nts = nthreads()
-    for j in 1:nts:numKeyboards
-        @sync begin
-            @threads for k in 1:min(nts, numKeyboards - j + 1)
-                i = j + k - 1
-                genomes[i], objectives[i] = runSA(
-                    keyboardId=i,
-                    lk=lk,
-                    rng=rngs[i],
-                    gpuArgs=gpuArgs,
-                    rewardArgs=rewardArgs,
-                    baselineScore=baselineScore,
-                    keyboardData=keyboardData,
-                    #genomeGenerator=() -> shuffleKeyMap(rngs[i], keyMap, fixedKeys),
-                    genomeGenerator=() -> frequencyGenome,
-                    algorithmArgs=algorithmArgs,
-                    dataPaths=dataPaths,
-                )
-            end
-        end
+    for i in 1:numKeyboards
+        genomes[i], objectives[i] = runSA(
+            keyboardId=i,
+            rng=rngs[i],
+            gpuArgs=gpuArgs,
+            rewardArgs=rewardArgs,
+            baselineScore=baselineScore,
+            keyboardData=keyboardData,
+            #genomeGenerator=() -> shuffleKeyMap(rngs[i], keyMap, fixedKeys),
+            genomeGenerator=() -> frequencyGenome,
+            algorithmArgs=algorithmArgs,
+            dataPaths=dataPaths,
+        )
     end
 
     bestI, bestG, bestO = reduce(((i, g, o), (i2, g2, o2)) -> o < o2 ? (i, g, o) : (i2, g2, o2), ((i, genomes[i], objectives[i]) for i in filter(x -> haskey(genomes, x), eachindex(genomes))))

@@ -54,10 +54,4 @@ function drawKeyboard(genome, filepath, keyboardData)
     savefig(filepath)
 end
 
-function drawKeyboard(genome, filepath, keyboardData, lk)
-    lock(lk) do
-        drawKeyboard(genome, filepath, keyboardData)
-    end
-end
-
 end
