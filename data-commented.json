@@ -1,0 +1,72 @@
+{
+  "dataPaths": {
+    "persistentPath": "persistent",
+    "rawDataPath": "persistent/raw_dataset",
+    "dataPath": "data",
+    "textPath": "data/dataset.txt",
+    "lastRunsPath": "data/lastRuns",
+    "finalResultsPath": "data/result",
+    "startResultsPath": "data/result/start",
+    "endResultsPath": "data/result/end"
+  },
+  "keyMap": {
+    "keys": [" ", "zxcvbnm,./", "asdfghjkl;'\n", "\tqwertyuiop[]\\", "`1234567890-="], // Rows of the keyboard layout that are actual characters
+    "startIndices": [4, 12, 25, 38, 53] // Indices of keys of the first key of each row in the layout map
+  },
+  "noCharsKeyMap": { // Rows that are not characters
+    "keys": [["ctrl", "win", "alt", "space", "agr", "fn", "rctl", "lf", "dn", "rt"], ["shift"], ["rshift", "up"], ["caps"], ["enter", "del", "tab"], ["ins"], ["bsp", ""], ["esc"], ["f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9", "f10", "f11", "f12"], ["psc"]],
+    "startIndices": [1, 11, 22, 24, 36, 52, 66, 68, 69, 81]
+  },
+  "randomSeed": 563622,
+  "dataStats": {
+    "fingersCPS": [5.5, 5.9, 6.3, 6.2, 6.4, 5.3, 7.0, 6.7, 5.2, 6.2], // Tested by just pressing the home key of each finger
+    "rowsCPS": [2.27, 3.0, 6.07, 3.0, 2.73, 2.67] // Bottom to top, tested by bringing the pinky to the respective key and going back to the home key
+  },
+  "keyboardLayout": { // Keychron Q1 Pro layout (sp are spacers, vsp are vertical spacers)
+    "rowsList": [[
+      [[3, 1.25], [1, 6.25], [3], ["sp", 0.25], [3, 1, -0.25]],
+      [[1, 2.25], [10], [1, 1.75], ["sp", 0.25], [1, 1, -0.25]],
+      [[1, 1.75], [11], [1, 2.25], ["sp", 0.25], [1]],
+      [[1, 1.5], [12], [1, 1.5], ["sp", 0.25], [1]],
+      [[13], [1, 2], ["sp", 0.25], [1]],
+      [["vsp", 0.25]],
+      [[1], ["sp", 0.25], [4], ["sp", 0.25], [4], ["sp", 0.25], [4], ["sp", 0.25], [1]]
+    ], [0.5, 0.5]],
+    "keysFingersList": [
+      [1, 11, 24, 25, 38, 39, 53, 54, 68, 69],
+      [2, 12, 26, 40, 55, 70],
+      [13, 27, 41, 56, 71],
+      [14, 15, 16, 28, 29, 42, 43, 57, 58, 72, 73],
+      [3, 4],
+      [5],
+      [17, 18, 30, 31, 44, 45, 59, 60, 74, 75],
+      [19, 32, 46, 61, 76],
+      [6, 20, 33, 47, 62, 77],
+      [7, 8, 9, 10, 21, 22, 23, 34, 35, 36, 37, 48, 49, 50, 51, 52, 63, 64, 65, 66, 67, 78, 79, 80, 81],
+    ],
+    "fingersHome": [25, 26, 27, 28, 4, 4, 31, 32, 33, 34]
+  },
+  "keyboardSize": 16,
+  "fixedKeys": "1234567890\t\n\\ ", // Keys that will not change on shuffle
+  "handFingers": [1, 1, 1, 1, 1, 2, 2, 2, 2, 2], //What finger is with which hand
+  "algorithmArgs": {
+    "t": 500, // Temperature
+    "e": 20, // Epoch size (number of iterations in each epoch, before going down in temperature
+    "nIter": 25000, // Number of iterations
+    "tShuffleMultiplier": 0.01, // Is multiplied by temperature to give number of keys shuffled (for 0.01 and t=1000, 10 keys shuffled)
+    "numKeyboards": 1 // Number of keyboards to generate
+  },
+  "frequencyRewardArgs": {
+    "effortWeighting": [0.3, 0.7], // dist, finger
+    "xBias": 0.57, // [0,1], 0.5 is equal for both
+    "leftHandBias": 0.5017, // [0,1], 0.5 is equal for both
+    "rowCPSBias": [1.0, 1.4, 0.7, 1.0, 1.0, 1.0],
+  },
+  "rewardArgs": {
+    "effortWeighting": [0.0, 0.0, 1.0], // double finger, single hand, reward map
+    "doubleFingerEffort": 1, // Positive prevents using same finger more than once
+    "singleHandEffort": 1, // Positive prefers double hand, negative prefers single hand
+    "rewardMapEffort": 1 // Positive favors keys close to home
+    // "nonNeighborsEffort": 0, // Penalty if keys for [], <> and () are not neighbors (0 is no penalty)
+  },
+}
