@@ -38,7 +38,7 @@ const LayoutKey = Tuple{NTuple{4,Float64},NTuple{2,Int},Int}
     noCharKeyMap::Dict{String,Int}
     fixedKeyMap::Dict{Char,Int}
     movableKeyMap::Dict{Char,Int}
-    fixedKeys::Vector{Char}
+    fixedKeys::Set{Char}
     movableKeys::Vector{Char}
     getFixedMovableKeyMaps::Function # TODO Specify type and return??
     handFingers::Vector{Int}

@@ -61,8 +61,9 @@ const randomSeed = 563622
 const dataStats = computeStats(
     text=textData,
     fingersCPS=Vector{Float64}([5.5, 5.9, 6.3, 6.2, 6.4, 5.3, 7.0, 6.7, 5.2, 6.2]), # Tested by just pressing the home key of each finger
-    rowsCPS=Vector{Float64}([2.27, 3.07, 6.07, 2.93, 2.73, 2.67]), # Bottom to top, tested by bringing the pinky to the respective key and going back to the home key
-    #effortWeighting=(0.7917, 1, 0, 0, 0.4773, 0.00), # dist, double finger, single hand, right hand, finger cps, row cps
+    rowsCPS=Vector{Float64}([2.27, 3.0, 6.07, 3.0, 2.73, 2.67]), # Bottom to top, tested by bringing the pinky to the respective key and going back to the home key
+    # rowsCPS=Vector{Float64}([2.27, 3.07, 6.07, 2.93, 2.73, 2.67]), # Bottom to top, tested by bringing the pinky to the respective key and going back to the home key
+    # effortWeighting=(0.7917, 1, 0, 0, 0.4773, 0.00), # dist, double finger, single hand, right hand, finger cps, row cps
 )
 
 const (; textStats) = dataStats
@@ -97,8 +98,8 @@ const layoutMap = layoutGenerator(
 
 lmval = first(values(layoutMap))
 
-const fixedKeys = collect("1234567890\t\n\\ ") # Keys that will not change on shuffle
-#const fixedKeys = collect("\t\n ") # Numbers also change
+const fixedKeys = Set("1234567890\t\n\\ ") # Keys that will not change on shuffle
+# const fixedKeys = collect("\t\n ") # Numbers also change
 getFixedMovableKeyMaps(keyMap) = conditionalSplit(((k, v),) -> k in fixedKeys, keyMap)
 const fixedKeyMap, movableKeyMap = getFixedMovableKeyMaps(keyMap)
 const movableKeys = [k for (k, v) in movableKeyMap]
@@ -122,9 +123,9 @@ const keyboardSize = 16
 
 const frequencyRewardArgs = FrequencyRewardArgs(
     effortWeighting=NTuple{2,Float64}((0.3, 0.7)), # dist, finger
-    xBias=0.7, # [0,1], 0.5 is equal for both
-    leftHandBias=0.53, # [0,1], 0.5 is equal for both
-    rowCPSBias=(1, 1.3, 0.8, 1, 1, 1),
+    xBias=0.75, # [0,1], 0.5 is equal for both
+    leftHandBias=0.503, # [0,1], 0.5 is equal for both
+    rowCPSBias=(1, 1, 0.8, 1, 1, 1),
     ansKbs=1 / keyboardSize,
 )
 

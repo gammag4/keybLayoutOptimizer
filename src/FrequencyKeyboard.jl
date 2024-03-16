@@ -6,9 +6,7 @@ using LinearAlgebra: normalize
 using ..Utils: conditionalSplit
 using ..DrawKeyboard: computeKeyboardColorMap, drawKeyboard
 
-export createFrequencyGenome, drawFrequencyKeyboard
-
-# TODO Optimize code here: Change <something> in <list> to dictionary haskey or something
+export createFrequencyKeyMap, createFrequencyGenome, drawFrequencyKeyboard
 
 function objective(key, dataStats, keyboardData, frequencyRewardArgs)
     (; effortWeighting, xBias, leftHandBias, rowCPSBias, ansKbs) = frequencyRewardArgs
@@ -43,20 +41,21 @@ getSorted(keyMap) = map(((c, f),) -> c, sort(by=((c, f),) -> f, collect(keyMap))
 
 # Maps chars to their frequencies
 function getFrequencyKeyMap(keyMap, charFrequency)
-    keyMap1, keyMap2 = conditionalSplit(((k, v),) -> k in keys(charFrequency), keyMap)
+    cfks = Set(keys(charFrequency))
+    keyMap1, keyMap2 = conditionalSplit(((k, v),) -> k in cfks, keyMap)
     keyMap1 = Dict(map(((k, v),) -> k => charFrequency[k], collect(keyMap1)))
     keyMap2 = Dict(map(((k, v),) -> k => 0, collect(keyMap2)))
     return merge(keyMap1, keyMap2)
 end
 
-function createFrequencyGenome(dataStats, keyboardData, frequencyRewardArgs)
+function createFrequencyGenome(dataStats, keyboardData, rewardKeyMap)
     (; textStats) = dataStats
     (; charFrequency) = textStats
     (; keyMap, getFixedMovableKeyMaps, fixedKeys, fixedKeyMap) = keyboardData
-    revFixedKeys = (keyMap[c] for c in fixedKeys) # Keys instead of chars
+    revFixedKeys = Set((keyMap[c] for c in fixedKeys)) # Keys instead of chars
 
-    rewardKeyMap = createFrequencyKeyMap(dataStats, keyboardData, frequencyRewardArgs) # Keys to rewards from entire layout
-    freqKeyMap, _ = conditionalSplit(((k, v),) -> k in values(keyMap), rewardKeyMap)
+    svkm = Set(values(keyMap))
+    freqKeyMap, _ = conditionalSplit(((k, v),) -> k in svkm, rewardKeyMap)
     _, movableFreqKeyMap = conditionalSplit(((k, v),) -> k in revFixedKeys, freqKeyMap)
 
     charFrequency = getFrequencyKeyMap(keyMap, charFrequency) # Chars to real frequencies

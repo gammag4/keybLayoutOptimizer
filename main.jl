@@ -24,7 +24,7 @@ include("src/SimulatedAnnealing.jl")
 
 using .Presets: runId, randomSeed, dataStats, keyboardData, frequencyRewardArgs, algorithmArgs, cpuArgs, gpuArgs, rewardArgs, dataPaths
 using .Types: GPUArgs, CPUArgs
-using .FrequencyKeyboard: createFrequencyGenome, drawFrequencyKeyboard
+using .FrequencyKeyboard: createFrequencyKeyMap, createFrequencyGenome, drawFrequencyKeyboard
 using .DrawKeyboard: drawKeyboard
 using .KeyboardObjective: objectiveFunction
 using .SimulatedAnnealing: chooseSA
@@ -36,8 +36,9 @@ const (; keyMap) = keyboardData
 
 const (; numKeyboards) = algorithmArgs
 
-frequencyGenome, freqKeyMap = createFrequencyGenome(dataStats, keyboardData, frequencyRewardArgs)
-drawFrequencyKeyboard(joinpath(finalResultsPath, "frequencyKeyboard.png"), frequencyGenome, freqKeyMap, keyboardData, useFrequencyColorMap=false)
+rewardKeyMap = createFrequencyKeyMap(dataStats, keyboardData, frequencyRewardArgs)
+frequencyGenome, freqKeyMap = createFrequencyGenome(dataStats, keyboardData, rewardKeyMap)
+drawFrequencyKeyboard(joinpath(finalResultsPath, "frequencyKeyboard.png"), frequencyGenome, freqKeyMap, keyboardData, useFrequencyColorMap=true)
 
 function multipleSA(numKeyboards, useGPU)
     computationArgs = useGPU ? gpuArgs : cpuArgs
