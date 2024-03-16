@@ -1,4 +1,4 @@
-# Simulated Annealing Keyboard Layout Optimizer
+# Keyboard Simulated Annealing Layout Optimizer
 
 Supporting simulated annealing code for the [Why I Made The World's Worst Keyboard](https://youtu.be/188fipF-i5I) YouTube video.
 
