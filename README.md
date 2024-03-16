@@ -1,33 +1,31 @@
-# keyboards
+# Simulated Annealing Keyboard Layout Optimizer
 
 Supporting simulated annealing code for the [Why I Made The World's Worst Keyboard](https://youtu.be/188fipF-i5I) YouTube video.
 
-Written in Julia... because it's fast, easy to read, and annoys my labmates.
+To train on your own custom dataset and customize keyboard layout or algorithm arguments,
+copy all your training data (text files) to the folder `persistent/raw_data`,
+copy `data-commented.json` to `persistent/data.json`, remove comments and adjust parameters.
 
-To run, clone the this repository and start Julia with `julia
---project=.` and run `include("keyboardSA.jl")`. It should start by
-benchmarking your training data (myBook.txt) against QWERTY followed by building
-it's own optimal layout. Change the number of iterations and cooling rates as
-desired within the SA() function. The terminal will give some indication of
-current progres (also stored by a new text file will give a
-iteration-by-iteration record of progress), and .png files of the current best
-solution will be saved to your same directory.
+## Running
 
-To train on your own custom dataset either point the "myBook.txt" somewhere else or just replace its contents.
+Download at <https://julialang.org/downloads/> and install the Julia language.
 
-Good luck!
+Assuming `julia` is in your path:
 
-## more detailed instructions
-
-Download at https://julialang.org/downloads/ and install the Julia language.
-
-Assuming `julia` is in your path, run
+For CUDA GPU, run:
 
 ```bash
-git clone https://github.com/AtomicFrontierCode/keyboards.git
-cd keyboards
-julia -L 'keyboardSA.jl'
+git clone https://github.com/gabrielmaia2/sa-keyboard-layout-optimizer.git
+cd sa-keyboard-layout-optimizer
+julia --project=. -L main.jl
+main()
 ```
 
-If you want to play with the script, it's recommended to use the
-[Revise.jl](https://github.com/timholy/Revise.jl) package to minimize latency.
+For threaded CPU, change nthreads for the number of threads your processor can run and run:
+
+```bash
+git clone https://github.com/gabrielmaia2/sa-keyboard-layout-optimizer.git
+cd sa-keyboard-layout-optimizer
+julia -t<nthreads> --project=. -L main.jl
+main()
+```

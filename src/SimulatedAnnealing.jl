@@ -47,7 +47,6 @@ function runSA(;
         for iteration in countfrom(1)
             t ≤ 1 && break
 
-            # TODO Shuffle genome in GPU
             # Create new genome
             newGenome = shuffleGenomeKeyMap(rng, currentGenome, fixedKeys, floor(Int, t * tShuffleMultiplier))
 

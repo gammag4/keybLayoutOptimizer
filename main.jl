@@ -171,10 +171,6 @@ function main()
     useGPU = true
     (; numKeyboards) = algorithmArgs
 
-    # Run julia --threads=<num threads your processor can run -1>,1 --project=. main.jl
-    # Example for 12 core processor, 2 threads per core, total 24 threads: julia --threads=23,1 --project=. main.jl
-    # Genomes are keymaps
-
     computationArgs = useGPU ? gpuArgs : cpuArgs
 
     genomes = Dict{Any,Any}()
