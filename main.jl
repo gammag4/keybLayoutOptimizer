@@ -180,8 +180,7 @@ function main()
     genomes = Dict{Any,Any}()
     objectives = Dict{Any,Any}()
     rngs = LehmerRNG.(rand(LehmerRNG(randomSeed), 1:typemax(Int), numKeyboards))
-    #genomeGenerator=() -> shuffleKeyMap(rngs[i], keyMap, fixedKeys)
-    generators = [() -> frequencyGenome for _ in 1:numKeyboards]
+    generators = vcat([() -> frequencyGenome], [() -> shuffleKeyMap(rngs[i], keyMap, fixedKeys) for i in 1:(numKeyboards-1)])
     baselineScore = objectiveFunction(keyMap, computationArgs, rewardArgs)
 
     println("Drawing frequency keymap...")
@@ -200,7 +199,7 @@ function main()
     )
 
     # TODO Use Distributed.@distributed to get results
-    chooseSA(numKeyboards, genomes, objectives, rngs, generators, saArgs, Val(useGPU))
+    @time chooseSA(numKeyboards, genomes, objectives, rngs, generators, saArgs, Val(useGPU))
 
     bestI, bestG, bestO = reduce(((i, g, o), (i2, g2, o2)) -> o < o2 ? (i, g, o) : (i2, g2, o2), ((i, genomes[i], objectives[i]) for i in filter(x -> haskey(genomes, x), eachindex(genomes))))
 
