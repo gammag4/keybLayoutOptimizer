@@ -149,25 +149,28 @@ function main()
     rewardKeyMap = createFrequencyKeyMap(dataStats, keyboardData, frequencyRewardArgs)
     frequencyGenome, freqKeyMap = createFrequencyGenome(dataStats, keyboardData, rewardKeyMap)
 
+    td = collect(textData)
+    lm = dictToArray(layoutMap)
+    rkm = minMaxScale(dictToArray(rewardKeyMap), 1, 0)
+
     cpuArgs = CPUArgs(
-        text=collect(textData),
-        layoutMap=dictToArray(layoutMap),
+        text=td,
+        layoutMap=lm,
         handFingers=handFingers,
-        rewardMap=minMaxScale(dictToArray(rewardKeyMap), 1, 0),
+        rewardMap=rkm,
     )
 
     gpuArgs = GPUArgs(
         numThreadsInBlock=512,
-        text=CuArray(collect(textData)),
-        layoutMap=CuArray(dictToArray(layoutMap)),
+        text=CuArray(td),
+        layoutMap=CuArray(lm),
         handFingers=CuArray(handFingers),
-        rewardMap=CuArray(minMaxScale(dictToArray(rewardKeyMap), 1, 0)),
+        rewardMap=CuArray(rkm),
     )
 
     useGPU = true
     (; numKeyboards) = algorithmArgs
 
-    # TODO Use gpu in objective function
     # Run julia --threads=<num threads your processor can run -1>,1 --project=. main.jl
     # Example for 12 core processor, 2 threads per core, total 24 threads: julia --threads=23,1 --project=. main.jl
     # Genomes are keymaps
