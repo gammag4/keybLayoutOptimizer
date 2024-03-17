@@ -17,7 +17,7 @@ end
 @adapt_structure RewardArgs
 
 @with_kw struct FrequencyRewardArgs
-    effortWeighting::NTuple{2,Float64}
+    effortWeighting::NTuple{4,Float64}
     xBias::Float64
     leftHandBias::Float64
     rowsCPSBias::NTuple{6,Float64}
@@ -29,6 +29,7 @@ const LayoutKey = Tuple{NTuple{4,Float64},NTuple{2,Int},Int}
 @with_kw struct KeyboardData
     keyboardColorMap::Dict{Char,HSV}
     layoutMap::Vector{LayoutKey}
+    vertLayoutMap
     keyMapCharacters::Set{Char}
     keyMap::Dict{Char,Int}
     noCharKeyMap::Dict{String,Int}

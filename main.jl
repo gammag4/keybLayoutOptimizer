@@ -94,6 +94,12 @@ function main(; useGPU)
     keyboardColorMap = computeKeyboardColorMap(charFrequency)
 
     layoutMap = layoutGenerator(; dictToNamedTuple(keyboardLayout)...)
+    horizLayoutMap = [(x, y, w, h, finger, home, row) for ((x, y, w, h), (finger, home), row) in layoutMap] # No nested tuples
+    # xMap, yMap, wMap, ....
+    lmSymbols = ("$(i)Map" for i in ['x', 'y', 'w', 'h', "finger", "home", "row"])
+    vertLayoutMap = NamedTuple{Tuple(Symbol.(lmSymbols))}(([k[i] for k in horizLayoutMap] for i in 1:7))
+    (; xMap, yMap, homeMap) = vertLayoutMap
+    vertLayoutMap = (hxMap=xMap[homeMap], hyMap=yMap[homeMap], vertLayoutMap...) # homes xs and ys
 
     fixedKeys = Set(fixedKeys)
     # const fixedKeys = collect("\t\n ") # Numbers also change
@@ -112,7 +118,7 @@ function main(; useGPU)
 
     (; effortWeighting, xBias, leftHandBias, rowsCPSBias) = dictToNamedTuple(frequencyRewardArgs)
     frequencyRewardArgs = FrequencyRewardArgs(;
-        effortWeighting=NTuple{2,Float64}(effortWeighting),
+        effortWeighting=NTuple{4,Float64}(effortWeighting),
         xBias=xBias,
         leftHandBias=leftHandBias,
         rowsCPSBias=NTuple{6,Float64}(rowsCPSBias),
@@ -130,6 +136,7 @@ function main(; useGPU)
     keyboardData = KeyboardData(
         keyboardColorMap,
         layoutMap,
+        vertLayoutMap,
         keyMapCharacters,
         keyMap,
         noCharKeyMap,
@@ -150,7 +157,7 @@ function main(; useGPU)
     frequencyGenome, freqKeyMap = createFrequencyGenome(dataStats, keyboardData, rewardKeyMap)
 
     td = collect(textData)
-    rkm = minMaxScale(dictToArray(rewardKeyMap), 1, 0)
+    rkm = minMaxScale(rewardKeyMap, 1, 0)
 
     cpuArgs = CPUArgs(
         text=td,
