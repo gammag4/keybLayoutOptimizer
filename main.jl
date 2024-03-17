@@ -153,13 +153,12 @@ function main(; useGPU, findWorst=false)
     frequencyGenome, freqKeyMap = createFrequencyGenome(dataStats, keyboardData, rewardKeyMap)
 
     td = collect(textData)
-    rkm = minMaxScale(rewardKeyMap, 1, 0)
 
     cpuArgs = CPUArgs(
         text=td,
         layoutMap=layoutMap,
         handFingers=handFingers,
-        rewardMap=rkm,
+        rewardMap=rewardKeyMap,
     )
 
     gpuArgs = GPUArgs(
@@ -167,7 +166,7 @@ function main(; useGPU, findWorst=false)
         text=CuArray(td),
         layoutMap=CuArray(layoutMap),
         handFingers=CuArray(handFingers),
-        rewardMap=CuArray(rkm),
+        rewardMap=CuArray(rewardKeyMap),
     )
 
     (; numKeyboards) = algorithmArgs
