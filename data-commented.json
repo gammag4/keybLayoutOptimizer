@@ -60,7 +60,7 @@
     "effortWeighting": [0.3, 0.7], // dist, finger
     "xBias": 0.57, // [0,1], 0.5 is equal for both
     "leftHandBias": 0.5017, // [0,1], 0.5 is equal for both
-    "rowCPSBias": [1.0, 1.4, 0.7, 1.0, 1.0, 1.0],
+    "rowsCPSBias": [1.0, 1.4, 0.7, 1.0, 1.0, 1.0]
   },
   "rewardArgs": {
     "effortWeighting": [0.0, 0.0, 1.0], // double finger, single hand, reward map

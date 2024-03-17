@@ -20,7 +20,7 @@ end
     effortWeighting::NTuple{2,Float64}
     xBias::Float64
     leftHandBias::Float64
-    rowCPSBias::NTuple{6,Float64}
+    rowsCPSBias::NTuple{6,Float64}
     ansKbs::Float64
 end
 

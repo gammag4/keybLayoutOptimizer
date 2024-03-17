@@ -110,12 +110,12 @@ function main(; useGPU)
     # Total number of iterations will be -epoch * log(t) / log(coolingRate)
     algorithmArgs = dictToNamedTuple(algorithmArgs)
 
-    (; effortWeighting, xBias, leftHandBias, rowCPSBias) = dictToNamedTuple(frequencyRewardArgs)
+    (; effortWeighting, xBias, leftHandBias, rowsCPSBias) = dictToNamedTuple(frequencyRewardArgs)
     frequencyRewardArgs = FrequencyRewardArgs(;
         effortWeighting=NTuple{2,Float64}(effortWeighting),
         xBias=xBias,
         leftHandBias=leftHandBias,
-        rowCPSBias=NTuple{6,Float64}(rowCPSBias),
+        rowsCPSBias=NTuple{6,Float64}(rowsCPSBias),
         ansKbs=1 / keyboardSize,
     )
 

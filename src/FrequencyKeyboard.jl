@@ -9,7 +9,7 @@ using ..DrawKeyboard: computeKeyboardColorMap, drawKeyboard
 export createFrequencyKeyMap, createFrequencyGenome, drawFrequencyKeyboard
 
 function objective(key, dataStats, keyboardData, frequencyRewardArgs)
-    (; effortWeighting, xBias, leftHandBias, rowCPSBias, ansKbs) = frequencyRewardArgs
+    (; effortWeighting, xBias, leftHandBias, rowsCPSBias, ansKbs) = frequencyRewardArgs
     (; fingersCPS, rowsCPS) = dataStats
     (; layoutMap, handFingers) = keyboardData
 
@@ -23,7 +23,7 @@ function objective(key, dataStats, keyboardData, frequencyRewardArgs)
 
     # Finger and row reward
     # TODO change to bounds [0,1] and compute outside function
-    fingerReward = normalize(fingersCPS)[finger] * normalize(rowsCPS .* rowCPSBias)[row]
+    fingerReward = normalize(fingersCPS)[finger] * normalize(rowsCPS .* rowsCPSBias)[row]
 
     # 1 for right hand, > 1 for left hand
     leftHandReward = 1 - leftHandBias + (2 - handFingers[finger]) * (2 * leftHandBias - 1)
