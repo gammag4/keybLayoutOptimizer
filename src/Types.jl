@@ -5,23 +5,19 @@ using CUDA: CuArray
 using Parameters: @with_kw
 using Colors: HSV
 
-export RewardArgs, FrequencyRewardArgs, LayoutKey, KeyboardData, CPUArgs, GPUArgs
+export RewardArgs, RewardMapArgs, LayoutKey, KeyboardData, CPUArgs, GPUArgs
 
 @with_kw struct RewardArgs
-    effortWeighting::NTuple{3,Float64}
-    doubleFingerEffort::Float64
-    singleHandEffort::Float64
-    rewardMapEffort::Float64
+    effortWeighting::NTuple{4,Float64}
+    yScale::Float64
+    distGrowthRate::Float64
 end
 
 @adapt_structure RewardArgs
 
-@with_kw struct FrequencyRewardArgs
-    effortWeighting::NTuple{4,Float64}
-    xBias::Float64
-    leftHandBias::Float64
+@with_kw struct RewardMapArgs
+    rewardWeighting::NTuple{3,Float64}
     rowsCPSBias::NTuple{6,Float64}
-    ansKbs::Float64
 end
 
 const LayoutKey = Tuple{NTuple{4,Float64},NTuple{2,Int},Int}

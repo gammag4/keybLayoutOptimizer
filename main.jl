@@ -28,7 +28,7 @@ using .DataProcessing: processDataFolderIntoTextFile
 using .DataStats: computeStats
 using .KeyboardGenerator: layoutGenerator, keyMapGenerator
 using .DrawKeyboard: computeKeyboardColorMap, drawKeyboard
-using .Types: RewardArgs, FrequencyRewardArgs, LayoutKey, KeyboardData, CPUArgs, GPUArgs
+using .Types: RewardArgs, RewardMapArgs, LayoutKey, KeyboardData, CPUArgs, GPUArgs
 using .FrequencyKeyboard: createFrequencyKeyMap, createFrequencyGenome, drawFrequencyKeyboard
 using .KeyboardObjective: objectiveFunction
 using .SimulatedAnnealing: chooseSA
@@ -48,7 +48,7 @@ function main(; useGPU)
         handFingers,
         algorithmArgs,
         keyboardSize,
-        frequencyRewardArgs,
+        rewardMapArgs,
         rewardArgs,
     ) = jsonData
 
@@ -116,21 +116,17 @@ function main(; useGPU)
     # Total number of iterations will be -epoch * log(t) / log(coolingRate)
     algorithmArgs = dictToNamedTuple(algorithmArgs)
 
-    (; effortWeighting, xBias, leftHandBias, rowsCPSBias) = dictToNamedTuple(frequencyRewardArgs)
-    frequencyRewardArgs = FrequencyRewardArgs(;
+    (; effortWeighting, yScale, distGrowthRate) = dictToNamedTuple(rewardArgs)
+    rewardArgs = RewardArgs(;
         effortWeighting=NTuple{4,Float64}(effortWeighting),
-        xBias=xBias,
-        leftHandBias=leftHandBias,
-        rowsCPSBias=NTuple{6,Float64}(rowsCPSBias),
-        ansKbs=1 / keyboardSize,
+        yScale=yScale,
+        distGrowthRate=distGrowthRate,
     )
 
-    (; effortWeighting, doubleFingerEffort, singleHandEffort, rewardMapEffort) = dictToNamedTuple(rewardArgs)
-    rewardArgs = RewardArgs(;
-        effortWeighting=NTuple{3,Float64}(effortWeighting),
-        doubleFingerEffort=doubleFingerEffort,
-        singleHandEffort=singleHandEffort,
-        rewardMapEffort=rewardMapEffort
+    (; rewardWeighting, rowsCPSBias) = dictToNamedTuple(rewardMapArgs)
+    rewardMapArgs = RewardMapArgs(;
+        rewardWeighting=NTuple{3,Float64}(rewardWeighting),
+        rowsCPSBias=NTuple{6,Float64}(rowsCPSBias),
     )
 
     keyboardData = KeyboardData(
@@ -153,7 +149,7 @@ function main(; useGPU)
         numMovableKeys,
     )
 
-    rewardKeyMap = createFrequencyKeyMap(dataStats, keyboardData, frequencyRewardArgs)
+    rewardKeyMap = createFrequencyKeyMap(dataStats, keyboardData, rewardMapArgs)
     frequencyGenome, freqKeyMap = createFrequencyGenome(dataStats, keyboardData, rewardKeyMap)
 
     td = collect(textData)

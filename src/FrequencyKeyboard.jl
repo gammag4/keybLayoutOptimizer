@@ -8,26 +8,19 @@ using ..DrawKeyboard: computeKeyboardColorMap, drawKeyboard
 
 export createFrequencyKeyMap, createFrequencyGenome, drawFrequencyKeyboard
 
-# x will always have scale one, y will be scaled by yScale
-biasedDistance(x, y, yScale) = sqrt(x^2 + (y * yScale)^2)
-
 # Array that maps key ids to their rewards
-function createFrequencyKeyMap(dataStats, keyboardData, frequencyRewardArgs)
-    (; xBias, rowsCPSBias, effortWeighting, ansKbs) = frequencyRewardArgs
+function createFrequencyKeyMap(dataStats, keyboardData, rewardMapArgs)
+    (; rowsCPSBias, rewardWeighting) = rewardMapArgs
     (; handFingers, vertLayoutMap) = keyboardData
     (; fingersCPS, rowsCPS) = dataStats
-    (; xMap, yMap, hxMap, hyMap, fingerMap, rowMap) = vertLayoutMap
-
-    dx, dy = xMap .- hxMap, yMap .- hyMap
-    distanceReward = sqrt.((dx .* (xBias * 2)) .^ 2 + (dy .* ((1 - xBias) * 2)) .^ 2) .* ansKbs
-    distanceReward = (x -> 2^1.5 - (1 + x)^1.5 / (2^1.5)).(distanceReward)
+    (; fingerMap, rowMap) = vertLayoutMap
 
     fingersCPSReward = minMaxScale(fingersCPS)[fingerMap]
     rowsCPSReward = minMaxScale(minMaxScale(rowsCPS) .* rowsCPSBias)[rowMap]
     leftHandReward = Float64.(handFingers[fingerMap] .== 1)
 
-    rewards = zip(fingersCPSReward, rowsCPSReward, leftHandReward, distanceReward)
-    return minMaxScale((x -> sum(x .* effortWeighting)).(rewards))
+    rewards = zip(fingersCPSReward, rowsCPSReward, leftHandReward)
+    return (x -> sum(x .* rewardWeighting)).(rewards) # Not scaled because the weights will scale it (weights that sum up to 1 will have it in range [0,1])
 end
 
 getSorted(keyMap) = map(((c, f),) -> c, sort(by=((c, f),) -> f, collect(keyMap)))

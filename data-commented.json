@@ -20,7 +20,7 @@
   "randomSeed": 563622,
   "dataStats": {
     "fingersCPS": [5.5, 5.9, 6.3, 6.2, 6.4, 5.3, 7.0, 6.7, 5.2, 6.2], // Tested by just pressing the home key of each finger
-    "rowsCPS": [2.27, 3.0, 6.07, 3.0, 2.73, 2.67] // Bottom to top, tested by bringing the pinky to the respective key and going back to the home key
+    "rowsCPS": [2.27, 2.93, 6.07, 3.07, 2.73, 2.67] // Bottom to top, tested by bringing the pinky to the respective key and going back to the home key
   },
   "keyboardLayout": { // Keychron Q1 Pro layout (sp are spacers, vsp are vertical spacers)
     "rowsList": [[
@@ -56,17 +56,14 @@
     "tShuffleMultiplier": 0.01, // Is multiplied by temperature to give number of keys shuffled (for 0.01 and t=1000, 10 keys shuffled)
     "numKeyboards": 1 // Number of keyboards to generate
   },
-  "frequencyRewardArgs": {
-    "effortWeighting": [0.3, 0.7, 0.2, 1], // dist, finger
-    "xBias": 0.57, // [0,1], 0.5 is equal for both
-    "leftHandBias": 0.5017, // [0,1], 0.5 is equal for both
-    "rowsCPSBias": [1.0, 1.4, 0.7, 1.0, 1.0, 1.0]
-  },
   "rewardArgs": {
-    "effortWeighting": [0.0, 0.0, 1.0], // double finger, single hand, reward map
-    "doubleFingerEffort": 1, // Positive prevents using same finger more than once
-    "singleHandEffort": 1, // Positive prefers double hand, negative prefers single hand
-    "rewardMapEffort": 1 // Positive favors keys close to home
+    "effortWeighting": [0.0, 0.0, 1.0, -1.0], // double finger, single hand, distance, reward map
+    "yScale": 0.85, // Scales y in distance from home keys
+    "distGrowthRate": 1.3, // Distance will be raised to this power, so it will grow with O(n^distGrowthRate)
     // "nonNeighborsEffort": 0, // Penalty if keys for [], <> and () are not neighbors (0 is no penalty)
   },
+  "rewardMapArgs": {
+    "rewardWeighting": [1, 1, 0.2], // fingerCPS, rowCPS, left hand
+    "rowsCPSBias": [1.0, 1.4, 0.7, 1.0, 1.0, 1.0]
+  }
 }

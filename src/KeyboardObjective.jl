@@ -12,19 +12,22 @@ export objectiveFunction
 function threadExec(i, genome, rewardArgs, text, layoutMap, handFingers, rewardMap)
     (;
         effortWeighting,
-        doubleFingerEffort,
-        singleHandEffort,
-        rewardMapEffort,
+        yScale,
+        distGrowthRate
     ) = rewardArgs
 
     char1 = text[i]
     char2 = text[i+1]
     key1 = genome[Int(char1)]
     key2 = genome[Int(char2)]
-    _, (finger1, _), _ = layoutMap[key1]
-    _, (finger2, _), _ = layoutMap[key2]
+    (x1, y1, _, _), (finger1, _), _ = layoutMap[key1]
+    (x2, y2, _, _), (finger2, _), _ = layoutMap[key2]
     hand1 = handFingers[finger1]
     hand2 = handFingers[finger2]
+
+    # x will always have scale one, y will be scaled by yScale
+    dx, dy = x2 - x1, y2 - y1
+    distance = -sqrt(dx^2 + (dy * yScale)^2)^distGrowthRate
 
     # Old code would also consider distance to prevent counting when pressing same key as before,
     # but this doesn't change the result of the algorithm, since it will just increase the objective of all genomes,
@@ -32,13 +35,14 @@ function threadExec(i, genome, rewardArgs, text, layoutMap, handFingers, rewardM
     sameFinger = finger1 == finger2 # Used same finger as previous
     sameHand = hand1 == hand2 # Used same hand as previous
 
-    doubleFingerPenalty = sameFinger * doubleFingerEffort
-    singleHandPenalty = sameHand * singleHandEffort
-    rewardMapPenalty = rewardMap[key2] * rewardMapEffort
+    doubleFingerPenalty = sameFinger # Positive prevents using same finger many times
+    singleHandPenalty = sameHand # Positive favors using both hands
+    rewardMapPenalty = rewardMap[key2] # Positive favors reward map
+    distancePenalty = distance # Positive favors less finger travel
 
     # TODO Put in output array instead of summing here
     # Combined weighting
-    penalties = (doubleFingerPenalty, singleHandPenalty, rewardMapPenalty) .* effortWeighting
+    penalties = (doubleFingerPenalty, singleHandPenalty, distancePenalty, rewardMapPenalty) .* effortWeighting
     return sum(penalties)
 end
 
@@ -90,11 +94,11 @@ function objectiveFunction(genome, computationArgs, rewardArgs)
     objective = computeRawObjective(genome, computationArgs, rewardArgs)
 
     # TODO Move
-    # (; nonNeighborsEffort, ansKbs) = rewardArgs
+    # (; nonNeighborsEffort) = rewardArgs
 
     # # Checks for [], <> and () being neighbors
     # checkNeighbors = checkNeighborsFunc(vcat(["[]", ",."], ["$i$(i+1)" for i in 0:8]), genome)
-    # objective = objective * (1 + checkNeighbors * nonNeighborsEffort / ansKbs)
+    # objective = objective * (1 + checkNeighbors * nonNeighborsEffort)
 
     return objective
 end
