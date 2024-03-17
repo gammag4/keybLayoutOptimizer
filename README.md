@@ -32,7 +32,7 @@ For CUDA GPU, run:
 ```bash
 git clone https://github.com/gabrielmaia2/sa-keyboard-layout-optimizer.git
 cd sa-keyboard-layout-optimizer
-julia --project=. -L main.jl
+julia --project -L "revise.jl"
 main(useGPU=true)
 ```
 
@@ -41,6 +41,6 @@ For threaded CPU, change nthreads for the number of threads your processor can r
 ```bash
 git clone https://github.com/gabrielmaia2/sa-keyboard-layout-optimizer.git
 cd sa-keyboard-layout-optimizer
-julia -t<nthreads> --project=. -L main.jl
+julia -t<nthreads> --project -L "revise.jl"
 main(useGPU=false)
 ```

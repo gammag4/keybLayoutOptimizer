@@ -1,8 +1,5 @@
-import Pkg
-Pkg.activate(@__DIR__)
-Pkg.instantiate()
+using Revise
 
-#using Revise
 using Base.Filesystem: cptree
 using Printf: @sprintf
 using Random: rand
@@ -11,17 +8,17 @@ using BenchmarkTools: @time
 using CUDA: CuArray
 using JSON: parse as jparse
 
-include("src/DataProcessing.jl")
-include("src/DrawKeyboard.jl")
-include("src/Types.jl")
-include("src/Utils.jl")
-include("src/DataStats.jl")
-include("src/FrequencyKeyboard.jl")
-include("src/KeyboardGenerator.jl")
+includet("src/DataProcessing.jl")
+includet("src/DrawKeyboard.jl")
+includet("src/Types.jl")
+includet("src/Utils.jl")
+includet("src/DataStats.jl")
+includet("src/FrequencyKeyboard.jl")
+includet("src/KeyboardGenerator.jl")
 
-include("src/Genome.jl")
-include("src/KeyboardObjective.jl")
-include("src/SimulatedAnnealing.jl")
+includet("src/Genome.jl")
+includet("src/KeyboardObjective.jl")
+includet("src/SimulatedAnnealing.jl")
 
 using .Utils: conditionalSplit, dictToArray, dictToNamedTuple, minMaxScale
 using .DataProcessing: processDataFolderIntoTextFile
