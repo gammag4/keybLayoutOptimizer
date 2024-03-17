@@ -34,7 +34,7 @@ using .KeyboardObjective: objectiveFunction
 using .SimulatedAnnealing: chooseSA
 using .Genome: shuffleKeyMap
 
-function main(; useGPU)
+function main(; useGPU, findWorst=false)
     jsonData = dictToNamedTuple(open(f -> jparse(f), "persistent/data.json", "r"))
     (;
         textPath,
@@ -192,7 +192,8 @@ function main(; useGPU)
         rewardArgs=rewardArgs,
         keyboardData=keyboardData,
         algorithmArgs=algorithmArgs,
-        dataPaths=dataPaths
+        dataPaths=dataPaths,
+        findWorst=findWorst
     )
 
     # TODO Use Distributed.@distributed to get results

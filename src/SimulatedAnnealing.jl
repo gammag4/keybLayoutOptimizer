@@ -27,11 +27,14 @@ function runSA(;
         rewardArgs,
         keyboardData,
         algorithmArgs,
-        dataPaths
+        dataPaths,
+        findWorst
     ) = saArgs
     (; fixedKeys) = keyboardData
     (; t, e, nIter, tShuffleMultiplier) = algorithmArgs
     (; startResultsPath, endResultsPath) = dataPaths
+
+    compare = findWorst ? (>) : (<)
 
     coolingRate = (1 / t)^(e / nIter)
 
@@ -66,10 +69,10 @@ function runSA(;
             end
 
             # If new keyboard is better (less objective is better)
-            if delta < 0
+            if compare(delta, 0)
                 currentGenome, currentObjective = newGenome, newObjective
 
-                if newObjective < bestObjective
+                if compare(newObjective, bestObjective)
                     bestGenome, bestObjective = newGenome, newObjective
                 end
 
