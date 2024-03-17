@@ -18,7 +18,7 @@ For CUDA GPU, run:
 git clone https://github.com/gabrielmaia2/sa-keyboard-layout-optimizer.git
 cd sa-keyboard-layout-optimizer
 julia --project=. -L main.jl
-main()
+main(useGPU=true)
 ```
 
 For threaded CPU, change nthreads for the number of threads your processor can run and run:
@@ -27,5 +27,5 @@ For threaded CPU, change nthreads for the number of threads your processor can r
 git clone https://github.com/gabrielmaia2/sa-keyboard-layout-optimizer.git
 cd sa-keyboard-layout-optimizer
 julia -t<nthreads> --project=. -L main.jl
-main()
+main(useGPU=false)
 ```

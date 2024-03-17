@@ -34,7 +34,7 @@ using .KeyboardObjective: objectiveFunction
 using .SimulatedAnnealing: chooseSA
 using .Genome: shuffleKeyMap
 
-function main()
+function main(; useGPU)
     jsonData = dictToNamedTuple(open(f -> jparse(f), "persistent/data.json", "r"))
     (;
         textPath,
@@ -167,7 +167,6 @@ function main()
         rewardMap=CuArray(rkm),
     )
 
-    useGPU = true
     (; numKeyboards) = algorithmArgs
 
     computationArgs = useGPU ? gpuArgs : cpuArgs
