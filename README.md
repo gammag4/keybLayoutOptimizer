@@ -33,7 +33,7 @@ For CUDA GPU, run:
 git clone https://github.com/gabrielmaia2/sa-keyboard-layout-optimizer.git
 cd sa-keyboard-layout-optimizer
 julia --project -L "revise.jl"
-main(useGPU=true)
+main(useGPU=true, findWorst=false)
 ```
 
 For threaded CPU, change nthreads for the number of threads your processor can run and run:
@@ -42,5 +42,7 @@ For threaded CPU, change nthreads for the number of threads your processor can r
 git clone https://github.com/gabrielmaia2/sa-keyboard-layout-optimizer.git
 cd sa-keyboard-layout-optimizer
 julia -t<nthreads> --project -L "revise.jl"
-main(useGPU=false)
+main(useGPU=false, findWorst=false)
 ```
+
+To find the worst keyboard layout instead of the best, just change `findWorst=false` to `findWorst=true`.
