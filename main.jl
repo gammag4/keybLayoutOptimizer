@@ -27,7 +27,7 @@ using .Utils: conditionalSplit, dictToArray, dictToNamedTuple, minMaxScale
 using .DataProcessing: processDataFolderIntoTextFile
 using .DataStats: computeStats
 using .KeyboardGenerator: layoutGenerator, keyMapGenerator
-using .DrawKeyboard: computeKeyboardColorMap
+using .DrawKeyboard: computeKeyboardColorMap, drawKeyboard
 using .Types: RewardArgs, FrequencyRewardArgs, LayoutKey, KeyboardData, CPUArgs, GPUArgs
 using .FrequencyKeyboard: createFrequencyKeyMap, createFrequencyGenome, drawFrequencyKeyboard
 using .KeyboardObjective: objectiveFunction
@@ -150,12 +150,11 @@ function main()
     frequencyGenome, freqKeyMap = createFrequencyGenome(dataStats, keyboardData, rewardKeyMap)
 
     td = collect(textData)
-    lm = dictToArray(layoutMap)
     rkm = minMaxScale(dictToArray(rewardKeyMap), 1, 0)
 
     cpuArgs = CPUArgs(
         text=td,
-        layoutMap=lm,
+        layoutMap=layoutMap,
         handFingers=handFingers,
         rewardMap=rkm,
     )
@@ -163,7 +162,7 @@ function main()
     gpuArgs = GPUArgs(
         numThreadsInBlock=512,
         text=CuArray(td),
-        layoutMap=CuArray(lm),
+        layoutMap=CuArray(layoutMap),
         handFingers=CuArray(handFingers),
         rewardMap=CuArray(rkm),
     )

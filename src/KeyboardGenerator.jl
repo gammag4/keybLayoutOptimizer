@@ -58,7 +58,7 @@ end
 addFingers(layoutTuples, keysFingersList, fingersHome) =
     map(((i, ((x, y, w, h), r)),) -> ((x, y, w, h), getFingerData(keysFingersList, fingersHome, i), r), enumerate(layoutTuples))
 
-# Returns dictionary that maps key numbers to tuples with ((x, y, w, h), (finger, home key), row number)
+# Returns vector that maps key numbers to tuples with ((x, y, w, h), (finger, home key), row number)
 function layoutGenerator(; rowsList, keysFingersList, fingersHome)
     # Rows list: Tuple(array(rows/vspacers), (starting x, starting y))
     # Row: array(key batch/spacers)
@@ -70,8 +70,7 @@ function layoutGenerator(; rowsList, keysFingersList, fingersHome)
 
     maprows = ((i, r),) -> map(((x, y, w, h),) -> ((x, y, w, h), i), r)
     layoutTuples = reduce(vcat, map(maprows, enumerate(layoutRowsList)))
-    layoutTuples2 = addFingers(layoutTuples, keysFingersList, fingersHome)
-    layout = Dict(i => t for (i, t) in enumerate(layoutTuples2))
+    layout = addFingers(layoutTuples, keysFingersList, fingersHome)
     return layout
 end
 

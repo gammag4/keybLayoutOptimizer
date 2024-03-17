@@ -28,7 +28,7 @@ const LayoutKey = Tuple{NTuple{4,Float64},NTuple{2,Int},Int}
 
 @with_kw struct KeyboardData
     keyboardColorMap::Dict{Char,HSV}
-    layoutMap::Dict{Int,LayoutKey}
+    layoutMap::Vector{LayoutKey}
     keyMapCharacters::Set{Char}
     keyMap::Dict{Char,Int}
     noCharKeyMap::Dict{String,Int}
