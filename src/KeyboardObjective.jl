@@ -9,6 +9,7 @@ export objectiveFunction
 
 # TODO Compute rewards in bulk for all keys and use the whole data to compute, normalize rewards and compute all reward
 
+# Higher is worse
 function threadExec(i, genome, rewardArgs, text, layoutMap, handFingers, rewardMap)
     (;
         effortWeighting,
@@ -27,18 +28,12 @@ function threadExec(i, genome, rewardArgs, text, layoutMap, handFingers, rewardM
 
     # x will always have scale one, y will be scaled by yScale
     dx, dy = x2 - x1, y2 - y1
-    distance = -sqrt(dx^2 + (dy * yScale)^2)^distGrowthRate
+    distance = sqrt(dx^2 + (dy * yScale)^2)^distGrowthRate
 
-    # Old code would also consider distance to prevent counting when pressing same key as before,
-    # but this doesn't change the result of the algorithm, since it will just increase the objective of all genomes,
-    # hence, not changing the ordering of the set of possible genomes, so it is useless computation
-    sameFinger = finger1 == finger2 # Used same finger as previous
-    sameHand = hand1 == hand2 # Used same hand as previous
-
-    doubleFingerPenalty = sameFinger # Positive prevents using same finger many times
-    singleHandPenalty = sameHand # Positive favors using both hands
-    rewardMapPenalty = rewardMap[key2] # Positive favors reward map
-    distancePenalty = distance # Positive favors less finger travel
+    doubleFingerPenalty = finger1 == finger2 # Used same finger as previous
+    singleHandPenalty = hand1 == hand2 # Used same hand as previous
+    distancePenalty = distance
+    rewardMapPenalty = -rewardMap[key2] # Negative, since higher is worse here and in reward map, higher is better
 
     # TODO Put in output array instead of summing here
     # Combined weighting

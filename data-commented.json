@@ -57,7 +57,7 @@
     "numKeyboards": 1 // Number of keyboards to generate
   },
   "rewardArgs": {
-    "effortWeighting": [0.0, 0.0, 1.0, -1.0], // double finger, single hand, distance, reward map
+    "effortWeighting": [0.0, 0.0, 1.0, 1.0], // double finger, single hand, distance, reward map
     "yScale": 0.85, // Scales y in distance from home keys
     "distGrowthRate": 1.3, // Distance will be raised to this power, so it will grow with O(n^distGrowthRate)
     // "nonNeighborsEffort": 0, // Penalty if keys for [], <> and () are not neighbors (0 is no penalty)
