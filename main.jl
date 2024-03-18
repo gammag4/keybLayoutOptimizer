@@ -8,10 +8,10 @@ using BenchmarkTools: @time
 using CUDA: CuArray
 using JSON: parse as jparse
 
-includet("src/DataProcessing.jl")
 includet("src/DrawKeyboard.jl")
 includet("src/Types.jl")
 includet("src/Utils.jl")
+includet("src/DataProcessing.jl")
 includet("src/DataStats.jl")
 includet("src/FrequencyKeyboard.jl")
 includet("src/KeyboardGenerator.jl")
@@ -34,12 +34,12 @@ using .Genome: shuffleKeyMap
 function createComputationArgs(useGPU, textData, layoutMap, handFingers, rewardKeyMap)
     return useGPU ? GPUArgs(
         numThreadsInBlock=512,
-        text=CuArray(collect(textData)),
+        text=CuArray(textData),
         layoutMap=CuArray(layoutMap),
         handFingers=CuArray(handFingers),
         rewardMap=CuArray(rewardKeyMap),
     ) : CPUArgs(
-        text=collect(textData),
+        text=textData,
         layoutMap=layoutMap,
         handFingers=handFingers,
         rewardMap=rewardKeyMap,
@@ -69,7 +69,7 @@ end
 function main(; useGPU, findWorst=false)
     jsonData = recursiveDictToNamedTuple(open(f -> jparse(f), "persistent/data.json", "r"))
     (;
-        textPath,
+        binaryPath,
         dataPaths,
         keyMap,
         noCharKeyMap,
@@ -107,14 +107,15 @@ function main(; useGPU, findWorst=false)
     )
 
     # Processing data
-    processDataFolderIntoTextFile(rawDataPath, textPath, keyMapCharacters, overwrite=false, verbose=true)
+    processDataFolderIntoTextFile(rawDataPath, binaryPath, keyMapCharacters, overwrite=false, verbose=true)
 
     # Getting data
-    textData = open(io -> read(io, String), textPath, "r")
+    textData = Vector{Tuple{UInt8,UInt8}}(undef, floor(Int, filesize(binaryPath) / 2))
+    read!(binaryPath, textData)
 
     (; fingersCPS, rowsCPS) = dataStats
     dataStats = computeStats(;
-        text=textData,
+        data=textData,
         fingersCPS=Vector{Float64}(fingersCPS),
         rowsCPS=Vector{Float64}(rowsCPS)
     )

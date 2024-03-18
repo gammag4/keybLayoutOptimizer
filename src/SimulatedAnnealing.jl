@@ -7,6 +7,7 @@ using Random: rand
 
 using ..Genome: shuffleGenomeKeyMap
 using ..KeyboardObjective: objectiveFunction
+using ..DrawKeyboard: drawKeyboard
 using ..Utils: dictToArray
 
 export runSA

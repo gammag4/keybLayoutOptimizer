@@ -85,4 +85,6 @@ function recursiveDictToNamedTuple(data)
     return data
 end
 
+@inline binrTupleToModTuple(c, t) = (c, (4 & t) >> 2, (2 & t) >> 1, 1 & t)
+
 end

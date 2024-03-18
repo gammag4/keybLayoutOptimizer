@@ -1,6 +1,6 @@
 module DataStats
 
-using ..Utils: minMaxScale, lpTransform, zscore
+using ..Utils: minMaxScale, lpTransform, zscore, binrTupleToModTuple
 
 export computeStats
 
@@ -11,9 +11,11 @@ function computeEffort(arrCPS)
     return effort
 end
 
-function computeCharHistogram(text)
+# TODO Count mod keys
+function computeCharHistogram(data)
     chars = Dict{Char,Int}()
-    for i in text
+    for (i, _) in data
+        i = Char(i)
         chars[i] = get(chars, i, 0) + 1
     end
     return chars
@@ -36,8 +38,8 @@ struct TextStats
     usedChars::Vector{Char}
 end
 
-function computeTextStats(text)
-    charHistogram = computeCharHistogram(text)
+function computeTextStats(data)
+    charHistogram = computeCharHistogram(data)
 
     return TextStats(
         charHistogram,
@@ -55,7 +57,7 @@ struct DataStatsType
 end
 
 function computeStats(;
-    text::String,
+    data::Vector{Tuple{UInt8,UInt8}},
     fingersCPS::Vector{Float64},
     rowsCPS::Vector{Float64},
 )
@@ -64,7 +66,7 @@ function computeStats(;
         rowsCPS,
         minMaxScale(computeEffort(fingersCPS), 0, 1),
         minMaxScale(computeEffort(rowsCPS), 0, 1),
-        computeTextStats(text),
+        computeTextStats(data),
     )
 end
 

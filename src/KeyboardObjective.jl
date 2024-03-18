@@ -3,7 +3,7 @@ module KeyboardObjective
 using CUDA
 
 using ..Types: RewardArgs, LayoutKey, CPUArgs, GPUArgs
-using ..Utils: dictToArray
+using ..Utils: dictToArray, binrTupleToModTuple
 
 export objectiveFunction
 
@@ -17,8 +17,11 @@ function threadExec(i, genome, rewardArgs, text, layoutMap, handFingers, rewardM
         distGrowthRate
     ) = rewardArgs
 
-    char1 = text[i]
-    char2 = text[i+1]
+    # TODO create penalty for mod keys distance
+    (char1, t1) = text[i]
+    (char2, t2) = text[i+1]
+    _, _, _ = (t1 & 4) >> 2, (t1 & 2) >> 1, t1 & 1
+    _, _, _ = (t2 & 4) >> 2, (t2 & 2) >> 1, t2 & 1
     key1 = genome[Int(char1)]
     key2 = genome[Int(char2)]
     (x1, y1, _, _), (finger1, _), _ = layoutMap[key1]

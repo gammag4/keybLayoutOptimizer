@@ -1,5 +1,5 @@
 {
-  "textPath": "data/dataset.txt",
+  "binaryPath": "data/dataset",
   "dataPaths": {
     "persistentPath": "persistent",
     "rawDataPath": "persistent/raw_dataset",

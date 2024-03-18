@@ -43,7 +43,7 @@ const LayoutKey = Tuple{NTuple{4,Float64},NTuple{2,Int},Int}
 end
 
 @with_kw struct CPUArgs
-    text::Vector{Char}
+    text::Vector{Tuple{UInt8,UInt8}}
     layoutMap::Vector{LayoutKey}
     handFingers::Vector{Int}
     rewardMap::Vector{Float64}
@@ -51,7 +51,7 @@ end
 
 @with_kw struct GPUArgs
     numThreadsInBlock::Int
-    text::CuArray{Char}
+    text::CuArray{Tuple{UInt8,UInt8}}
     layoutMap::CuArray{LayoutKey}
     handFingers::CuArray{Int}
     rewardMap::CuArray{Float64}
