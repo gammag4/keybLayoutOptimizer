@@ -19,6 +19,8 @@ Runs are saved in `data/result`, where `start` folder has the starting keyboards
 
 `data/lastRuns` will have the results from previous runs. You can prevent last runs from being saved by setting `"saveLastRuns": false` in `persistent/data.json`.
 
+If you want to see the keyboard updating in realtime, set `"viewKeyboardUpdates": true` in `persistent/data.json`. Note that this impacts performance.
+
 ## Adjusting penalty weights
 
 The weights are in `persistent/data.json` and `data-commented.json` has some comments explaining how to edit it. Some hints for adjusting them:

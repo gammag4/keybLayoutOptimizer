@@ -82,6 +82,7 @@ function main(; useGPU, findWorst=false)
         keyboardSize,
         rewardArgs,
         saveLastRuns,
+        keyboardUpdatesArgs
     ) = jsonData
 
     (; persistentPath, rawDataPath, dataPath, lastRunsPath, finalResultsPath, startResultsPath, endResultsPath) = dataPaths
@@ -188,7 +189,8 @@ function main(; useGPU, findWorst=false)
         algorithmArgs=algorithmArgs,
         compareGenomes=compareGenomes,
         rngs=rngs, # RNGs for each keyboard
-        genomeGenerator=genomeGenerator # Function that generates starting keyboard
+        genomeGenerator=genomeGenerator, # Function that generates starting keyboard
+        keyboardUpdatesArgs=keyboardUpdatesArgs
     )
 
     startGenomes, endGenomes, bestGenome = @time runSA(saArgs, useGPU)
@@ -198,13 +200,13 @@ function main(; useGPU, findWorst=false)
 
     # Draws genomes
     for (i, genome, _) in startGenomes
-        drawKeyboard(genome, joinpath(startResultsPath, "$i.png"), keyboardData)
+        drawKeyboard(genome, keyboardData, filepath=joinpath(startResultsPath, "$i.png"))
     end
     for (i, genome, _) in endGenomes
-        drawKeyboard(genome, joinpath(endResultsPath, "$i.png"), keyboardData)
+        drawKeyboard(genome, keyboardData, filepath=joinpath(endResultsPath, "$i.png"))
     end
 
-    drawKeyboard(bestG, joinpath(finalResultsPath, "bestOverall.png"), keyboardData)
+    drawKeyboard(bestG, keyboardData, filepath=joinpath(finalResultsPath, "bestOverall.png"))
 
     # Saves last runs
     saveLastRuns && cptree(finalResultsPath, joinpath(lastRunsPath, "$runId"))

@@ -1,6 +1,6 @@
 module DrawKeyboard
 
-using Plots: plot, plot!, annotate!, text, savefig, Shape
+using Plots: plot, plot!, annotate!, text, savefig, Shape, gui
 using Colors: HSV, HSVA
 
 export computeKeyboardColorMap, drawKeyboard
@@ -37,7 +37,7 @@ function drawKey(key, letter, layoutMap, keyboardData)
     annotate!(x, y, text(uppercase(strip(string(letter == '\\' ? '|' : letter))), :black, :center, 8))
 end
 
-function drawKeyboard(genome, filepath, keyboardData)
+function drawKeyboard(genome, keyboardData; filepath=nothing)
     (; layoutMap, noCharKeyMap) = keyboardData
 
     plot(axis=([], false))
@@ -51,16 +51,16 @@ function drawKeyboard(genome, filepath, keyboardData)
     end
 
     plot!(aspect_ratio=1, legend=false)
-    savefig(filepath)
+    isnothing(filepath) ? gui() : savefig(filepath)
 end
 
-function drawKeyboard(genome, filepath, keyboardData, lk)
+function drawKeyboard(genome, keyboardData, lk; filepath=nothing)
     if isnothing(lk)
-        drawKeyboard(genome, filepath, keyboardData)
+        drawKeyboard(genome, keyboardData, filepath=filepath)
         return
     end
     lock(lk) do
-        drawKeyboard(genome, filepath, keyboardData)
+        drawKeyboard(genome, keyboardData, filepath=filepath)
     end
 end
 

@@ -6,7 +6,6 @@ using Printf: @sprintf
 using Random: rand
 
 using ..Genome: shuffleGenomeKeyMap
-using ..DrawKeyboard: drawKeyboard
 using ..KeyboardObjective: objectiveFunction
 using ..Utils: dictToArray
 
@@ -25,10 +24,12 @@ function sa(;
         keyboardData,
         compareGenomes,
         rngs,
-        genomeGenerator
+        genomeGenerator,
+        keyboardUpdatesArgs
     ) = saArgs
     (; t, e, nIter, tShuffleMultiplier) = algorithmArgs
     (; fixedKeys) = keyboardData
+    (; viewKeyboardUpdates, nIterBeforeNextUpdate) = keyboardUpdatesArgs
 
     rng = rngs[keyboardId]
     @inline generator() = genomeGenerator(keyboardId, rng)
@@ -42,6 +43,8 @@ function sa(;
     try
         for iteration in countfrom(1)
             t ≤ 1 && break
+
+            viewKeyboardUpdates && iteration % nIterBeforeNextUpdate == 1 && drawKeyboard(currentGenome, keyboardData)
 
             # Create new genome
             newGenome = shuffleGenomeKeyMap(rng, currentGenome, fixedKeys, floor(Int, t * tShuffleMultiplier))
