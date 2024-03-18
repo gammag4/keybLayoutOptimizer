@@ -113,17 +113,18 @@ function main(; useGPU, findWorst=false)
     # Total number of iterations will be -epoch * log(t) / log(coolingRate)
     algorithmArgs = dictToNamedTuple(algorithmArgs)
 
-    (; effortWeighting, yScale, distGrowthRate) = dictToNamedTuple(rewardArgs)
-    rewardArgs = RewardArgs(;
-        effortWeighting=NTuple{4,Float64}(effortWeighting),
-        yScale=yScale,
-        distGrowthRate=distGrowthRate,
-    )
-
     (; rewardWeighting, rowsCPSBias) = dictToNamedTuple(rewardMapArgs)
     rewardMapArgs = RewardMapArgs(;
         rewardWeighting=NTuple{3,Float64}(rewardWeighting),
         rowsCPSBias=NTuple{6,Float64}(rowsCPSBias),
+    )
+
+    (; effortWeighting, yScale, distGrowthRate) = dictToNamedTuple(rewardArgs)
+    effortWeighting = (effortWeighting..., sum(rewardWeighting)) # Adds weight for rewardMap
+    rewardArgs = RewardArgs(;
+        effortWeighting=NTuple{4,Float64}(effortWeighting),
+        yScale=yScale,
+        distGrowthRate=distGrowthRate,
     )
 
     keyboardData = KeyboardData(

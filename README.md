@@ -19,7 +19,6 @@ Note that by also adding effortBiases together with effortWeights, you actually 
 - FingersCPS and rowsCPS (clicks per second) penalties favor your strongest fingers and the strongest rows of the keyboard;
   - RowsCPSBias biases specific rows, even if your CPS in that specific row isn't the best, I used it to remove a little bit the home row and increase the bias of the row below it;
 - Left hand reward favors using left hand, let it 0 if you don't want it or negative to favor right hand;
-- Reward map penalty combines fingersCPS, rowsCPS, rowsCPSBias and left hand rewards, just let it 1 and tweak these instead;
 
 ## Running
 

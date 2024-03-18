@@ -8,7 +8,7 @@ using ..DrawKeyboard: computeKeyboardColorMap, drawKeyboard
 
 export createFrequencyKeyMap, createFrequencyGenome, drawFrequencyKeyboard
 
-# Array that maps key ids to their rewards
+# Array that maps key ids to their rewards (values normalized to range [0,1])
 function createFrequencyKeyMap(dataStats, keyboardData, rewardMapArgs)
     (; rowsCPSBias, rewardWeighting) = rewardMapArgs
     (; handFingers, vertLayoutMap) = keyboardData
@@ -20,7 +20,7 @@ function createFrequencyKeyMap(dataStats, keyboardData, rewardMapArgs)
     leftHandReward = Float64.(handFingers[fingerMap] .== 1)
 
     rewards = zip(fingersCPSReward, rowsCPSReward, leftHandReward)
-    return (x -> sum(x .* rewardWeighting)).(rewards) # Not scaled because the weights will scale it (weights that sum up to 1 will have it in range [0,1])
+    return minMaxScale((x -> sum(x .* rewardWeighting)).(rewards))
 end
 
 getSorted(keyMap) = map(((c, f),) -> c, sort(by=((c, f),) -> f, collect(keyMap)))
