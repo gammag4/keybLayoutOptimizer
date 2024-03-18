@@ -22,15 +22,21 @@ function threadExec(i, genome, rewardArgs, text, layoutMap, handFingers, rewardM
     key1 = genome[Int(char1)]
     key2 = genome[Int(char2)]
     (x1, y1, _, _), (finger1, _), _ = layoutMap[key1]
-    (x2, y2, _, _), (finger2, _), _ = layoutMap[key2]
+    (x2, y2, _, _), (finger2, home), _ = layoutMap[key2]
+    (hx, hy, _, _), _, _ = layoutMap[home]
     hand1 = handFingers[finger1]
     hand2 = handFingers[finger2]
+
+    sameFinger = finger1 == finger2 # Used same finger as previous
+
+    # If same finger, uses old position, else, uses home position (assuming fingers go home when you use another finger)
+    x1, y1 = sameFinger * x1 + (!sameFinger) * hx, sameFinger * y1 + (!sameFinger) * hy
 
     # x will always have scale one, y will be scaled by yScale
     dx, dy = x2 - x1, y2 - y1
     distance = sqrt(dx^2 + (dy * yScale)^2)^distGrowthRate
 
-    doubleFingerPenalty = finger1 == finger2 # Used same finger as previous
+    doubleFingerPenalty = sameFinger
     singleHandPenalty = hand1 == hand2 # Used same hand as previous
     distancePenalty = distance
     rewardMapPenalty = -rewardMap[key2] # Negative, since higher is worse here and in reward map, higher is better
