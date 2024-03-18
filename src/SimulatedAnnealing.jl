@@ -10,7 +10,7 @@ using ..DrawKeyboard: drawKeyboard
 using ..KeyboardObjective: objectiveFunction
 using ..Utils: dictToArray
 
-export chooseSA
+export chooseSA!
 
 # Has probability 0.5 of changing current genome to best when starting new epoch
 # Has probability e^(-delta/t) of changing current genome to a worse when not the best genome
@@ -105,7 +105,7 @@ function runSA(;
 end
 
 # GPU
-function chooseSA(numKeyboards, genomes, objectives, rngs, generators, saArgs, useGPU::Val{true})
+function chooseSA!(numKeyboards, genomes, objectives, rngs, generators, saArgs, useGPU::Val{true})
     for i in 1:numKeyboards
         genomes[i], objectives[i] = runSA(
             keyboardId=i,
@@ -117,7 +117,7 @@ function chooseSA(numKeyboards, genomes, objectives, rngs, generators, saArgs, u
 end
 
 # CPU
-function chooseSA(numKeyboards, genomes, objectives, rngs, generators, saArgs, useGPU::Val{false})
+function chooseSA!(numKeyboards, genomes, objectives, rngs, generators, saArgs, useGPU::Val{false})
     lk = ReentrantLock()
     nts = nthreads()
 

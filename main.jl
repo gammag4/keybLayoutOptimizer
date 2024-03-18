@@ -28,7 +28,7 @@ using .DrawKeyboard: computeKeyboardColorMap, drawKeyboard
 using .Types: RewardArgs, RewardMapArgs, LayoutKey, KeyboardData, CPUArgs, GPUArgs
 using .FrequencyKeyboard: createFrequencyKeyMap, createFrequencyGenome, drawFrequencyKeyboard
 using .KeyboardObjective: objectiveFunction
-using .SimulatedAnnealing: chooseSA
+using .SimulatedAnnealing: chooseSA!
 using .Genome: shuffleKeyMap
 
 function main(; useGPU, findWorst=false)
@@ -194,7 +194,7 @@ function main(; useGPU, findWorst=false)
     )
 
     # TODO Use Distributed.@distributed to get results
-    @time chooseSA(numKeyboards, genomes, objectives, rngs, generators, saArgs, Val(useGPU))
+    @time chooseSA!(numKeyboards, genomes, objectives, rngs, generators, saArgs, Val(useGPU))
 
     bestI, bestG, bestO = reduce(((i, g, o), (i2, g2, o2)) -> o < o2 ? (i, g, o) : (i2, g2, o2), ((i, genomes[i], objectives[i]) for i in filter(x -> haskey(genomes, x), eachindex(genomes))))
 
