@@ -10,37 +10,33 @@ using ..DrawKeyboard: drawKeyboard
 using ..KeyboardObjective: objectiveFunction
 using ..Utils: dictToArray
 
-export chooseSA!
+export runSA
 
 # Has probability 0.5 of changing current genome to best when starting new epoch
 # Has probability e^(-delta/t) of changing current genome to a worse when not the best genome
-function runSA(;
+function sa(;
     keyboardId,
-    rng,
-    genomeGenerator,
-    lk=nothing,
     saArgs
 )
     (;
         computationArgs,
         rewardArgs,
-        keyboardData,
         algorithmArgs,
-        dataPaths,
-        findWorst
+        keyboardData,
+        compareGenomes,
+        rngs,
+        genomeGenerator
     ) = saArgs
-    (; fixedKeys) = keyboardData
     (; t, e, nIter, tShuffleMultiplier) = algorithmArgs
-    (; startResultsPath, endResultsPath) = dataPaths
+    (; fixedKeys) = keyboardData
 
-    compare = findWorst ? (>) : (<)
+    rng = rngs[keyboardId]
+    @inline generator() = genomeGenerator(keyboardId, rng)
 
     coolingRate = (1 / t)^(e / nIter)
 
-    bestGenome = currentGenome = genomeGenerator()
-    bestObjective = currentObjective = objectiveFunction(currentGenome, computationArgs, rewardArgs)
-
-    drawKeyboard(bestGenome, joinpath(startResultsPath, "$keyboardId.png"), keyboardData, lk)
+    bestGenome = currentGenome = startGenome = generator()
+    bestObjective = currentObjective = startObjective = objectiveFunction(currentGenome, computationArgs, rewardArgs)
 
     baseT = t
     try
@@ -66,10 +62,10 @@ function runSA(;
             end
 
             # If new keyboard is better (less objective is better)
-            if compare(delta, 0)
+            if compareGenomes(newObjective, currentObjective)
                 currentGenome, currentObjective = newGenome, newObjective
 
-                if compare(newObjective, bestObjective)
+                if compareGenomes(newObjective, bestObjective)
                     bestGenome, bestObjective = newGenome, newObjective
                 end
 
@@ -94,42 +90,69 @@ function runSA(;
         end
     end
 
-    drawKeyboard(bestGenome, joinpath(endResultsPath, "$keyboardId.png"), keyboardData, lk)
-
-    return bestGenome, bestObjective
+    return (startGenome, startObjective), (bestGenome, bestObjective)
 end
 
 # GPU
-function chooseSA!(numKeyboards, genomes, objectives, rngs, generators, saArgs, useGPU::Val{true})
+function chooseSA!(startGenomes, startObjectives, genomes, objectives, numKeyboards, saArgs, useGPU::Val{true})
     for i in 1:numKeyboards
-        genomes[i], objectives[i] = runSA(
+        (startGenomes[i], startObjectives[i]), (genomes[i], objectives[i]) = sa(
             keyboardId=i,
-            rng=rngs[i],
-            genomeGenerator=generators[i],
             saArgs=saArgs
         )
     end
 end
 
 # CPU
-function chooseSA!(numKeyboards, genomes, objectives, rngs, generators, saArgs, useGPU::Val{false})
-    lk = ReentrantLock()
+function chooseSA!(startGenomes, startObjectives, genomes, objectives, numKeyboards, saArgs, useGPU::Val{false})
     nts = nthreads()
 
     for j in 1:nts:numKeyboards
         @sync begin
             @threads for k in 1:min(nts, numKeyboards - j + 1)
                 i = j + k - 1
-                genomes[i], objectives[i] = runSA(
+                (startGenomes[i], startObjectives[i]), (genomes[i], objectives[i]) = sa(
                     keyboardId=i,
-                    rng=rngs[i],
-                    genomeGenerator=generators[i],
-                    lk=lk,
                     saArgs=saArgs
                 )
             end
         end
     end
+end
+
+genomesToArray(numKeyboards, genomes, objectives) = filter(((i, a, b),) -> !isnothing(a) && !isnothing(b), [(i, get(genomes, i, nothing), get(objectives, i, nothing)) for i in 1:numKeyboards])
+
+function runSA(numKeyboards, saArgs, dataPaths, useGPU)
+    # These dicts are used so that we can cancel the operation in the middle and still get the keyboards that were computed up to that time
+    genomes = Dict{Any,Any}()
+    objectives = Dict{Any,Any}()
+    startGenomes = Dict{Any,Any}()
+    startObjectives = Dict{Any,Any}()
+
+    try
+        # TODO Use Distributed.@distributed to get endResultsPath
+        chooseSA!(startGenomes, startObjectives, genomes, objectives, numKeyboards, saArgs, useGPU)
+    catch e
+        if !(e isa InterruptException)
+            rethrow(e)
+        end
+    end
+
+    (; startResultsPath, endResultsPath) = dataPaths
+    (; keyboardData) = saArgs
+
+    startGenomes = genomesToArray(numKeyboards, startGenomes, startObjectives)
+    endGenomes = genomesToArray(numKeyboards, genomes, objectives)
+
+    # Draws genomes in the end
+    for (i, genome, _) in startGenomes
+        drawKeyboard(genome, joinpath(startResultsPath, "$i.png"), keyboardData)
+    end
+    for (i, genome, _) in endGenomes
+        drawKeyboard(genome, joinpath(endResultsPath, "$i.png"), keyboardData)
+    end
+
+    return startGenomes, endGenomes
 end
 
 end

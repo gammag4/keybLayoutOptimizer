@@ -28,7 +28,7 @@ using .DrawKeyboard: computeKeyboardColorMap, drawKeyboard
 using .Types: RewardArgs, RewardMapArgs, LayoutKey, KeyboardData, CPUArgs, GPUArgs
 using .FrequencyKeyboard: createFrequencyKeyMap, createFrequencyGenome, drawFrequencyKeyboard
 using .KeyboardObjective: objectiveFunction
-using .SimulatedAnnealing: chooseSA!
+using .SimulatedAnnealing: runSA
 using .Genome: shuffleKeyMap
 
 function main(; useGPU, findWorst=false)
@@ -170,11 +170,10 @@ function main(; useGPU, findWorst=false)
     (; numKeyboards) = algorithmArgs
 
     computationArgs = useGPU ? gpuArgs : cpuArgs
+    compareGenomes = findWorst ? (>) : (<) # Usage: compareGenomes(new, old)
 
-    genomes = Dict{Any,Any}()
-    objectives = Dict{Any,Any}()
     rngs = LehmerRNG.(rand(LehmerRNG(randomSeed), 1:typemax(Int), numKeyboards))
-    generators = vcat([() -> frequencyGenome], [() -> shuffleKeyMap(rngs[i], keyMap, fixedKeys) for i in 1:(numKeyboards-1)])
+    @inline genomeGenerator(i, rng) = i == 1 ? frequencyGenome : shuffleKeyMap(rng, keyMap, fixedKeys) # TODO CHECK
 
     println("Drawing frequency keymap...")
     drawFrequencyKeyboard(joinpath(finalResultsPath, "frequencyKeyboard.png"), frequencyGenome, freqKeyMap, keyboardData, useFrequencyColorMap=true)
@@ -187,15 +186,14 @@ function main(; useGPU, findWorst=false)
         rewardArgs=rewardArgs,
         keyboardData=keyboardData,
         algorithmArgs=algorithmArgs,
-        dataPaths=dataPaths,
-        findWorst=findWorst
+        compareGenomes=compareGenomes,
+        rngs=rngs, # RNGs for each keyboard
+        genomeGenerator=genomeGenerator # Function that generates starting keyboard
     )
 
-    # TODO Use Distributed.@distributed to get results
-    @time chooseSA!(numKeyboards, genomes, objectives, rngs, generators, saArgs, Val(useGPU))
+    startGenomes, endGenomes = @time runSA(numKeyboards, saArgs, dataPaths, Val(useGPU))
 
-    bestI, bestG, bestO = reduce(((i, g, o), (i2, g2, o2)) -> o < o2 ? (i, g, o) : (i2, g2, o2), ((i, genomes[i], objectives[i]) for i in filter(x -> haskey(genomes, x), eachindex(genomes))))
-
+    bestI, bestG, bestO = reduce(((i, g, o), (i2, g2, o2)) -> compareGenomes(o, o2) ? (i, g, o) : (i2, g2, o2), endGenomes)
     println("Best overall: $bestI; Score: $bestO")
 
     drawKeyboard(bestG, joinpath(finalResultsPath, "bestOverall.png"), keyboardData)
