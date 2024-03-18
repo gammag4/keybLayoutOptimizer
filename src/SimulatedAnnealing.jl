@@ -34,12 +34,14 @@ function runSA(;
     (; t, e, nIter, tShuffleMultiplier) = algorithmArgs
     (; startResultsPath, endResultsPath) = dataPaths
 
+    baselineScale = max(abs(baselineScore), 1)
+
     compare = findWorst ? (>) : (<)
 
     coolingRate = (1 / t)^(e / nIter)
 
     currentGenome = genomeGenerator()
-    currentObjective = objectiveFunction(currentGenome, computationArgs, rewardArgs, baselineScore)
+    currentObjective = objectiveFunction(currentGenome, computationArgs, rewardArgs, baselineScale)
 
     bestGenome, bestObjective = currentGenome, currentObjective
 
@@ -54,7 +56,7 @@ function runSA(;
             newGenome = shuffleGenomeKeyMap(rng, currentGenome, fixedKeys, floor(Int, t * tShuffleMultiplier))
 
             # Asess
-            newObjective = objectiveFunction(newGenome, computationArgs, rewardArgs, baselineScore)
+            newObjective = objectiveFunction(newGenome, computationArgs, rewardArgs, baselineScale)
             delta = newObjective - currentObjective
 
             if iteration % 1000 == 1
