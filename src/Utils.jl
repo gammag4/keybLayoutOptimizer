@@ -3,7 +3,7 @@ module Utils
 using Statistics: mean, std
 using Base.Iterators: flatten, take, drop, repeated
 
-export conditionalSplit, lpadIter, rpadIter, mergeIter, dictToNamedTuple
+export conditionalSplit, lpadIter, rpadIter, mergeIter, dictToNamedTuple, recursiveDictToNamedTuple
 
 function conditionalSplit(f, v)
     a = typeof(v)()
@@ -69,5 +69,20 @@ function zscore(v)
 end
 
 dictToNamedTuple(d) = NamedTuple{Tuple(Symbol.(keys(d)))}(values(d))
+
+function recursiveDictToNamedTuple(data)
+    data = deepcopy(data)
+
+    for (k, v) in pairs(data)
+        if v isa AbstractDict || v isa AbstractVector
+            data[k] = recursiveDictToNamedTuple(v)
+        end
+    end
+
+    if data isa Dict
+        data = dictToNamedTuple(data)
+    end
+    return data
+end
 
 end

@@ -122,7 +122,10 @@ end
 
 genomesToArray(numKeyboards, genomes, objectives) = filter(((i, a, b),) -> !isnothing(a) && !isnothing(b), [(i, get(genomes, i, nothing), get(objectives, i, nothing)) for i in 1:numKeyboards])
 
-function runSA(numKeyboards, saArgs, dataPaths, useGPU)
+function runSA(saArgs, useGPU)
+    (; algorithmArgs, compareGenomes) = saArgs
+    (; numKeyboards) = algorithmArgs
+
     # These dicts are used so that we can cancel the operation in the middle and still get the keyboards that were computed up to that time
     genomes = Dict{Any,Any}()
     objectives = Dict{Any,Any}()
@@ -131,28 +134,18 @@ function runSA(numKeyboards, saArgs, dataPaths, useGPU)
 
     try
         # TODO Use Distributed.@distributed to get endResultsPath
-        chooseSA!(startGenomes, startObjectives, genomes, objectives, numKeyboards, saArgs, useGPU)
+        chooseSA!(startGenomes, startObjectives, genomes, objectives, numKeyboards, saArgs, Val(useGPU))
     catch e
         if !(e isa InterruptException)
             rethrow(e)
         end
     end
 
-    (; startResultsPath, endResultsPath) = dataPaths
-    (; keyboardData) = saArgs
-
     startGenomes = genomesToArray(numKeyboards, startGenomes, startObjectives)
     endGenomes = genomesToArray(numKeyboards, genomes, objectives)
+    bestGenome = reduce(((i, g, o), (i2, g2, o2)) -> compareGenomes(o, o2) ? (i, g, o) : (i2, g2, o2), endGenomes)
 
-    # Draws genomes in the end
-    for (i, genome, _) in startGenomes
-        drawKeyboard(genome, joinpath(startResultsPath, "$i.png"), keyboardData)
-    end
-    for (i, genome, _) in endGenomes
-        drawKeyboard(genome, joinpath(endResultsPath, "$i.png"), keyboardData)
-    end
-
-    return startGenomes, endGenomes
+    return startGenomes, endGenomes, bestGenome
 end
 
 end

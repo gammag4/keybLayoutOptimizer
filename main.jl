@@ -20,7 +20,7 @@ includet("src/Genome.jl")
 includet("src/KeyboardObjective.jl")
 includet("src/SimulatedAnnealing.jl")
 
-using .Utils: conditionalSplit, dictToArray, dictToNamedTuple, minMaxScale
+using .Utils: conditionalSplit, dictToArray, minMaxScale, recursiveDictToNamedTuple
 using .DataProcessing: processDataFolderIntoTextFile
 using .DataStats: computeStats
 using .KeyboardGenerator: layoutGenerator, keyMapGenerator
@@ -31,8 +31,43 @@ using .KeyboardObjective: objectiveFunction
 using .SimulatedAnnealing: runSA
 using .Genome: shuffleKeyMap
 
+function createComputationArgs(useGPU, textData, layoutMap, handFingers, rewardKeyMap)
+    return useGPU ? GPUArgs(
+        numThreadsInBlock=512,
+        text=CuArray(collect(textData)),
+        layoutMap=CuArray(layoutMap),
+        handFingers=CuArray(handFingers),
+        rewardMap=CuArray(rewardKeyMap),
+    ) : CPUArgs(
+        text=collect(textData),
+        layoutMap=layoutMap,
+        handFingers=handFingers,
+        rewardMap=rewardKeyMap,
+    )
+end
+
+function computeRewardArgs(rewardArgs)
+    (; weights, yScale, distGrowthRate, rowsCPSBias) = rewardArgs
+    (; fingersCPS, rowsCPS, leftHand, doubleFinger, singleHand, distance) = weights
+    rewardWeighting = (fingersCPS, rowsCPS, leftHand)
+    effortWeighting = (doubleFinger, singleHand, distance, sum(rewardWeighting)) # Adds weight for rewardMap
+
+    rewardArgs = RewardArgs(;
+        effortWeighting=NTuple{4,Float64}(effortWeighting),
+        yScale=Float64(yScale),
+        distGrowthRate=Float64(distGrowthRate),
+    )
+
+    rewardMapArgs = RewardMapArgs(;
+        rewardWeighting=NTuple{3,Float64}(rewardWeighting),
+        rowsCPSBias=NTuple{6,Float64}(rowsCPSBias),
+    )
+
+    return rewardArgs, rewardMapArgs
+end
+
 function main(; useGPU, findWorst=false)
-    jsonData = dictToNamedTuple(open(f -> jparse(f), "persistent/data.json", "r"))
+    jsonData = recursiveDictToNamedTuple(open(f -> jparse(f), "persistent/data.json", "r"))
     (;
         textPath,
         dataPaths,
@@ -49,7 +84,6 @@ function main(; useGPU, findWorst=false)
         saveLastRuns,
     ) = jsonData
 
-    dataPaths = dictToNamedTuple(dataPaths)
     (; persistentPath, rawDataPath, dataPath, lastRunsPath, finalResultsPath, startResultsPath, endResultsPath) = dataPaths
 
     # Creating folders and removing old data
@@ -61,13 +95,11 @@ function main(; useGPU, findWorst=false)
 
 
     # TODO Split layout into list of keys with same size so that they can be shuffled
-    keyMap = dictToNamedTuple(keyMap)
     keyMap = keyMapGenerator(
         startIndices=Vector{Int}(keyMap.startIndices),
         keys=Vector{String}(keyMap.keys)
     )
     keyMapCharacters = Set(keys(keyMap))
-    noCharKeyMap = dictToNamedTuple(noCharKeyMap)
     noCharKeyMap = keyMapGenerator(
         startIndices=Vector{Int}(noCharKeyMap.startIndices),
         keys=Vector{Vector{String}}(noCharKeyMap.keys)
@@ -79,7 +111,7 @@ function main(; useGPU, findWorst=false)
     # Getting data
     textData = open(io -> read(io, String), textPath, "r")
 
-    (; fingersCPS, rowsCPS) = dictToNamedTuple(dataStats)
+    (; fingersCPS, rowsCPS) = dataStats
     dataStats = computeStats(;
         text=textData,
         fingersCPS=Vector{Float64}(fingersCPS),
@@ -90,7 +122,7 @@ function main(; useGPU, findWorst=false)
     (; charFrequency) = textStats
     keyboardColorMap = computeKeyboardColorMap(charFrequency)
 
-    layoutMap = layoutGenerator(; dictToNamedTuple(keyboardLayout)...)
+    layoutMap = layoutGenerator(; keyboardLayout...)
     horizLayoutMap = [(x, y, w, h, finger, home, row) for ((x, y, w, h), (finger, home), row) in layoutMap] # No nested tuples
     # xMap, yMap, wMap, ....
     lmSymbols = ("$(i)Map" for i in ['x', 'y', 'w', 'h', "finger", "home", "row"])
@@ -109,25 +141,6 @@ function main(; useGPU, findWorst=false)
     numLayoutKeys = length(layoutMap)
     numFixedKeys = length(fixedKeyMap)
     numMovableKeys = length(movableKeyMap)
-
-    # Total number of iterations will be -epoch * log(t) / log(coolingRate)
-    algorithmArgs = dictToNamedTuple(algorithmArgs)
-
-    (; weights, yScale, distGrowthRate, rowsCPSBias) = dictToNamedTuple(rewardArgs)
-    (; fingersCPS, rowsCPS, leftHand, doubleFinger, singleHand, distance) = dictToNamedTuple(weights)
-    rewardWeighting = (fingersCPS, rowsCPS, leftHand)
-    effortWeighting = (doubleFinger, singleHand, distance, sum(rewardWeighting)) # Adds weight for rewardMap
-
-    rewardArgs = RewardArgs(;
-        effortWeighting=NTuple{4,Float64}(effortWeighting),
-        yScale=Float64(yScale),
-        distGrowthRate=Float64(distGrowthRate),
-    )
-
-    rewardMapArgs = RewardMapArgs(;
-        rewardWeighting=NTuple{3,Float64}(rewardWeighting),
-        rowsCPSBias=NTuple{6,Float64}(rowsCPSBias),
-    )
 
     keyboardData = KeyboardData(
         keyboardColorMap,
@@ -149,33 +162,18 @@ function main(; useGPU, findWorst=false)
         numMovableKeys,
     )
 
-    rewardKeyMap = createFrequencyKeyMap(dataStats, keyboardData, rewardMapArgs)
-    frequencyGenome, freqKeyMap = createFrequencyGenome(dataStats, keyboardData, rewardKeyMap)
-
-    td = collect(textData)
-
-    cpuArgs = CPUArgs(
-        text=td,
-        layoutMap=layoutMap,
-        handFingers=handFingers,
-        rewardMap=rewardKeyMap,
-    )
-
-    gpuArgs = GPUArgs(
-        numThreadsInBlock=512,
-        text=CuArray(td),
-        layoutMap=CuArray(layoutMap),
-        handFingers=CuArray(handFingers),
-        rewardMap=CuArray(rewardKeyMap),
-    )
-
     (; numKeyboards) = algorithmArgs
 
-    computationArgs = useGPU ? gpuArgs : cpuArgs
+    rngs = LehmerRNG.(rand(LehmerRNG(randomSeed), 1:typemax(Int), numKeyboards))
+    @inline genomeGenerator(i, rng) = i == 1 ? frequencyGenome : shuffleKeyMap(rng, keyMap, fixedKeys)
+
     compareGenomes = findWorst ? (>) : (<) # Usage: compareGenomes(new, old)
 
-    rngs = LehmerRNG.(rand(LehmerRNG(randomSeed), 1:typemax(Int), numKeyboards))
-    @inline genomeGenerator(i, rng) = i == 1 ? frequencyGenome : shuffleKeyMap(rng, keyMap, fixedKeys) # TODO CHECK
+    rewardArgs, rewardMapArgs = computeRewardArgs(rewardArgs)
+    rewardKeyMap = createFrequencyKeyMap(dataStats, keyboardData, rewardMapArgs)
+    computationArgs = createComputationArgs(useGPU, textData, layoutMap, handFingers, rewardKeyMap)
+
+    frequencyGenome, freqKeyMap = createFrequencyGenome(dataStats, keyboardData, rewardKeyMap)
 
     println("Drawing frequency keymap...")
     drawFrequencyKeyboard(joinpath(finalResultsPath, "frequencyKeyboard.png"), frequencyGenome, freqKeyMap, keyboardData, useFrequencyColorMap=true)
@@ -193,11 +191,21 @@ function main(; useGPU, findWorst=false)
         genomeGenerator=genomeGenerator # Function that generates starting keyboard
     )
 
-    startGenomes, endGenomes = @time runSA(numKeyboards, saArgs, dataPaths, Val(useGPU))
+    startGenomes, endGenomes, bestGenome = @time runSA(saArgs, useGPU)
 
-    bestI, bestG, bestO = reduce(((i, g, o), (i2, g2, o2)) -> compareGenomes(o, o2) ? (i, g, o) : (i2, g2, o2), endGenomes)
+    bestI, bestG, bestO = bestGenome
     println("Best overall: $bestI; Score: $bestO")
 
+    # Draws genomes
+    for (i, genome, _) in startGenomes
+        drawKeyboard(genome, joinpath(startResultsPath, "$i.png"), keyboardData)
+    end
+    for (i, genome, _) in endGenomes
+        drawKeyboard(genome, joinpath(endResultsPath, "$i.png"), keyboardData)
+    end
+
     drawKeyboard(bestG, joinpath(finalResultsPath, "bestOverall.png"), keyboardData)
+
+    # Saves last runs
     saveLastRuns && cptree(finalResultsPath, joinpath(lastRunsPath, "$runId"))
 end
