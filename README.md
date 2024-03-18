@@ -36,7 +36,7 @@ julia --project -L "revise.jl"
 main(useGPU=true, findWorst=false)
 ```
 
-For threaded CPU, change nthreads for the number of threads your processor can run and run:
+For threaded CPU, change <nthreads> for the number of threads your processor can run and run:
 
 ```bash
 git clone https://github.com/gabrielmaia2/sa-keyboard-layout-optimizer.git
