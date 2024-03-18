@@ -34,7 +34,7 @@ function threadExec(i, genome, rewardArgs, text, layoutMap, handFingers, rewardM
 
     # x will always have scale one, y will be scaled by yScale
     dx, dy = x2 - x1, y2 - y1
-    distance = sqrt(dx^2 + (dy * yScale)^2)^distGrowthRate
+    distance = (1 + sqrt(dx^2 + (dy * yScale)^2))^distGrowthRate - 1
 
     doubleFingerPenalty = sameFinger
     singleHandPenalty = hand1 == hand2 # Used same hand as previous
