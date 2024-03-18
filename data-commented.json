@@ -1,9 +1,9 @@
 {
+  "textPath": "data/dataset.txt",
   "dataPaths": {
     "persistentPath": "persistent",
     "rawDataPath": "persistent/raw_dataset",
     "dataPath": "data",
-    "textPath": "data/dataset.txt",
     "lastRunsPath": "data/lastRuns",
     "finalResultsPath": "data/result",
     "startResultsPath": "data/result/start",
@@ -13,11 +13,10 @@
     "keys": [" ", "zxcvbnm,./", "asdfghjkl;'\n", "\tqwertyuiop[]\\", "`1234567890-="], // Rows of the keyboard layout that are actual characters
     "startIndices": [4, 12, 25, 38, 53] // Indices of keys of the first key of each row in the layout map
   },
-  "noCharsKeyMap": { // Rows that are not characters
+  "noCharKeyMap": { // Rows that are not characters
     "keys": [["ctrl", "win", "alt", "space", "agr", "fn", "rctl", "lf", "dn", "rt"], ["shift"], ["rshift", "up"], ["caps"], ["enter", "del", "tab"], ["ins"], ["bsp", ""], ["esc"], ["f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9", "f10", "f11", "f12"], ["psc"]],
     "startIndices": [1, 11, 22, 24, 36, 52, 66, 68, 69, 81]
   },
-  "randomSeed": 563622,
   "dataStats": {
     "fingersCPS": [5.5, 5.9, 6.3, 6.2, 6.4, 5.3, 7.0, 6.7, 5.2, 6.2], // Tested by just pressing the home key of each finger
     "rowsCPS": [2.27, 2.93, 6.07, 3.07, 2.73, 2.67] // Bottom to top, tested by bringing the pinky to the respective key and going back to the home key
@@ -46,9 +45,10 @@
     ],
     "fingersHome": [25, 26, 27, 28, 4, 4, 31, 32, 33, 34]
   },
-  "keyboardSize": 16,
   "fixedKeys": "1234567890\t\n\\ ", // Keys that will not change on shuffle
   "handFingers": [1, 1, 1, 1, 1, 2, 2, 2, 2, 2], //What finger is with which hand
+  "keyboardSize": 16,
+  "randomSeed": 563622,
   "algorithmArgs": {
     "t": 500, // Temperature
     "e": 20, // Epoch size (number of iterations in each epoch, before going down in temperature
