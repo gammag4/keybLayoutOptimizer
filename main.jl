@@ -175,16 +175,14 @@ function main(; useGPU, findWorst=false)
     objectives = Dict{Any,Any}()
     rngs = LehmerRNG.(rand(LehmerRNG(randomSeed), 1:typemax(Int), numKeyboards))
     generators = vcat([() -> frequencyGenome], [() -> shuffleKeyMap(rngs[i], keyMap, fixedKeys) for i in 1:(numKeyboards-1)])
-    baselineScore = objectiveFunction(keyMap, computationArgs, rewardArgs)
 
     println("Drawing frequency keymap...")
     drawFrequencyKeyboard(joinpath(finalResultsPath, "frequencyKeyboard.png"), frequencyGenome, freqKeyMap, keyboardData, useFrequencyColorMap=true)
 
-    println(@sprintf "Raw baseline: %.2f" baselineScore)
+    println(@sprintf "Raw baseline: %.2f" objectiveFunction(keyMap, computationArgs, rewardArgs))
     println("From here everything is reletive with + % worse and - % better than this baseline")
 
     saArgs = (
-        baselineScore=baselineScore,
         computationArgs=computationArgs,
         rewardArgs=rewardArgs,
         keyboardData=keyboardData,

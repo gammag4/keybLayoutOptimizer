@@ -22,7 +22,6 @@ function runSA(;
     saArgs
 )
     (;
-        baselineScore,
         computationArgs,
         rewardArgs,
         keyboardData,
@@ -34,16 +33,12 @@ function runSA(;
     (; t, e, nIter, tShuffleMultiplier) = algorithmArgs
     (; startResultsPath, endResultsPath) = dataPaths
 
-    baselineScale = max(abs(baselineScore), 1)
-
     compare = findWorst ? (>) : (<)
 
     coolingRate = (1 / t)^(e / nIter)
 
-    currentGenome = genomeGenerator()
-    currentObjective = objectiveFunction(currentGenome, computationArgs, rewardArgs, baselineScale)
-
-    bestGenome, bestObjective = currentGenome, currentObjective
+    bestGenome = currentGenome = genomeGenerator()
+    bestObjective = currentObjective = objectiveFunction(currentGenome, computationArgs, rewardArgs)
 
     drawKeyboard(bestGenome, joinpath(startResultsPath, "$keyboardId.png"), keyboardData, lk)
 
@@ -56,7 +51,7 @@ function runSA(;
             newGenome = shuffleGenomeKeyMap(rng, currentGenome, fixedKeys, floor(Int, t * tShuffleMultiplier))
 
             # Asess
-            newObjective = objectiveFunction(newGenome, computationArgs, rewardArgs, baselineScale)
+            newObjective = objectiveFunction(newGenome, computationArgs, rewardArgs)
             delta = newObjective - currentObjective
 
             if iteration % 1000 == 1

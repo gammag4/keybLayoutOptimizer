@@ -98,9 +98,4 @@ function objectiveFunction(genome, computationArgs, rewardArgs)
     return objective
 end
 
-function objectiveFunction(genome, computationArgs, rewardArgs, baselineScale)
-    objective = objectiveFunction(genome, computationArgs, rewardArgs) / baselineScale
-    return objective
-end
-
 end
