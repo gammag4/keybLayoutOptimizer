@@ -6,6 +6,19 @@ To train on your own custom dataset and customize keyboard layout or algorithm a
 copy all your training data (text files) to the folder `persistent/raw_data`,
 copy `data-commented.json` to `persistent/data.json`, remove comments and adjust parameters.
 
+You can cancel execution at any time with CTRL+C and the first and best keyboard generated up to that time will be saved.
+
+## Data
+
+Everything in `data` folder is generated, it can be deleted at any time.
+
+The training data from `persistent/raw_data` will be joined together in the file `data/dataset.txt`.
+
+Runs are saved in `data/result`, where `start` folder has the starting keyboards with each id and `end` folder has the final best keyboards with each id.
+`data/result/bestOverall.png` will be the best keyboard of all.
+
+`data/lastRuns` will have the results from previous runs. You can prevent last runs from being saved by setting `"saveLastRuns": false` in `persistent/data.json`.
+
 ## Adjusting penalty weights
 
 The weights are in `persistent/data.json` and `data-commented.json` has some comments explaining how to edit it. Some hints for adjusting them:

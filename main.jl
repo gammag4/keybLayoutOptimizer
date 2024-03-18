@@ -47,6 +47,7 @@ function main(; useGPU, findWorst=false)
         keyboardSize,
         rewardMapArgs,
         rewardArgs,
+        saveLastRuns,
     ) = jsonData
 
     dataPaths = dictToNamedTuple(dataPaths)
@@ -197,5 +198,5 @@ function main(; useGPU, findWorst=false)
     println("Best overall: $bestI; Score: $bestO")
 
     drawKeyboard(bestG, joinpath(finalResultsPath, "bestOverall.png"), keyboardData)
-    cptree(finalResultsPath, joinpath(lastRunsPath, "$runId"))
+    saveLastRuns && cptree(finalResultsPath, joinpath(lastRunsPath, "$runId"))
 end
