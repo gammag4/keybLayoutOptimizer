@@ -195,19 +195,21 @@ function main(; useGPU, findWorst=false)
     )
 
     startGenomes, endGenomes, bestGenome = @time runSA(saArgs, useGPU)
+    endGenomes = sort(endGenomes, by=((i, g, o),) -> o) # First is best, last is less best
+    _, bestG, bestO = bestGenome # Best genome
 
-    bestI, bestG, bestO = bestGenome
-    println("Best overall: $bestI; Score: $bestO")
+    # Draw best
+    println("Best overall score: $bestO")
+    drawKeyboard(bestG, keyboardData, filepath=joinpath(finalResultsPath, "bestOverall.png"))
+
+    println("Drawing keyboards at start and at the end sorted by best to less best...")
 
     # Draws genomes
-    for (i, genome, _) in startGenomes
-        drawKeyboard(genome, keyboardData, filepath=joinpath(startResultsPath, "$i.png"))
-    end
-    for (i, genome, _) in endGenomes
+    for (i, (id, genome, _)) in enumerate(endGenomes)
+        _, startGenome, _ = startGenomes[id]
+        drawKeyboard(startGenome, keyboardData, filepath=joinpath(startResultsPath, "$i.png"))
         drawKeyboard(genome, keyboardData, filepath=joinpath(endResultsPath, "$i.png"))
     end
-
-    drawKeyboard(bestG, keyboardData, filepath=joinpath(finalResultsPath, "bestOverall.png"))
 
     # Saves last runs
     saveLastRuns && cptree(finalResultsPath, joinpath(lastRunsPath, "$runId"))
