@@ -56,7 +56,8 @@ The weights are in `persistent/data.json` and `data-commented.json` has some com
 
 Note that by also adding effortBiases together with effortWeights, you actually have an efforts neuron that can be used to track back (fit) the parameters that get the closest to a specific keyboard layout.
 
-- Distance: **DO NOT** put too much weight on distance or distance growth penalties or the algorithm will tend to put all the important keys clustered together in the middle;
+- Distance: More weight favors less finger traveling;
+  - Distance is raised to the power of distanceGrowthRate;
   - yScale scales down movements across y axis so that lateral movements (across x axis) will deal more penalty, this reduces lateral movements, it can have some undesirable results for non-ortholinear keyboard layouts;
 - Single hand: If you prefer to use a single hand for most words instead of favoring using both, put negative weight in single hand penalty;
 - Double finger prevents using same finger twice, will favor putting keys that are not normally written together in the same finger columns;
