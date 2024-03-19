@@ -58,9 +58,9 @@
   },
   "rewardArgs": {
     "weights": {
-      "doubleFinger": 0.13,
-      "singleHand": 0.13,
-      "distance": 0.05,
+      "doubleFinger": 0.2,
+      "singleHand": 0.2,
+      "distance": 0.1,
       "fingersCPS": 0.1,
       "rowsCPS": 1.0,
       "leftHand": 0
