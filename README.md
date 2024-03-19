@@ -1,12 +1,41 @@
 # Keyboard Simulated Annealing Layout Optimizer
 
-Supporting simulated annealing code for the [Why I Made The World's Worst Keyboard](https://youtu.be/188fipF-i5I) YouTube video.
+Based on the code from this YouTube video: [Why I Made The World's Worst Keyboard](https://youtu.be/188fipF-i5I).
 
 To train on your own custom dataset and customize keyboard layout or algorithm arguments,
 copy all your training data (text files) to the folder `persistent/raw_data`,
 copy `data-commented.json` to `persistent/data.json`, remove comments and adjust parameters.
 
 You can cancel execution at any time with CTRL+C and the first and best keyboard generated up to that time will be saved.
+
+## Motivation
+
+What i changed in the code:
+
+- Organized code: Organized and separated code in multiple files to make it easier to understand and to work with;
+- Improved customizability and specializability: Allowed using custom keyMaps and keyboard layouts and customizing other arguments in `persistent/data.json`;
+- Improved maintenance and updates:
+  - Use Revise.jl in Julia REPL to make it easier and faster to make updates and rerun;
+  - Use json for changing arguments without updating code;
+- Improved performance:
+  - Improved overall code performance by changing some operations or bad practices;
+  - Cached some rewards to prevent needless computations;
+  - Implement parallelization using multithreads in CPU or CUDA in GPU and allow to choose one of them;
+- Customized weights;
+- One of the keyboards starts with an optimized layout from char frequencies;
+
+Why did I do it: I used this project to learn Julia, CUDA and multithreading, and because I wanted to create my own custom layout with my own custom rewards.
+
+### Performance results
+
+Benchmark with 10000 iterations:
+
+- Specs: AMD Ryzen 5 5600X (12 cores, 24 threads), NVidia GeForce RTX 4060 Ti 8GB, Fedora 39;
+- Old code: 273.680406s;
+- New code (with CPU, single thread): 120.886688s;
+- New code (with CPU, 24 keyboards one in each thread): 362.078500s (~ 15.086604s per keyboard);
+- New code (with GPU): 8.069193s;
+- New code (with GPU, after compiled): 6.631457s;
 
 ## Data
 
