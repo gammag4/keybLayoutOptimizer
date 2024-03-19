@@ -9,7 +9,21 @@ export computeKeyboardColorMap, drawKeyboard
 # Saturation is the normalized frequency of each key
 normFreqToHSV(f) = HSV((1.0 - f) * 170, f * 0.7 + 0.3, 1.0)
 
-function computeKeyboardColorMap(charFrequency)
+# Sorts chars and gives colors linearly, better for visualizing order of frequency
+function computeKeyboardColorMap(charFrequency, linear::Val{true})
+    charFrequency = filter(((k, v),) -> !isspace(k), charFrequency)
+
+    d = Dict{Float64,Vector{Any}}()
+    for (k, v) in charFrequency
+        d[v] = get(d, v, [])
+        push!(d[v], k)
+    end
+
+    res = sort(collect(d), by=((f, lc),) -> f)
+    return Dict((c => normFreqToHSV((i - 1) / (length(res) - 1)) for (i, (_, lc)) in enumerate(res) for c in lc))
+end
+
+function computeKeyboardColorMap(charFrequency, linear::Val{false})
     charFrequency = filter(((k, v),) -> !isspace(k), charFrequency)
     # Normalizes char frequency
     maxf = maximum(values(charFrequency))

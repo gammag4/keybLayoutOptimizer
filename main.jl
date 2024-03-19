@@ -122,7 +122,7 @@ function main(; useGPU, findWorst=false)
 
     (; textStats) = dataStats
     (; charFrequency) = textStats
-    keyboardColorMap = computeKeyboardColorMap(charFrequency)
+    keyboardColorMap = computeKeyboardColorMap(charFrequency, Val(true))
 
     layoutMap = layoutGenerator(; keyboardLayout...)
     horizLayoutMap = [(x, y, w, h, finger, home, row) for ((x, y, w, h), (finger, home), row) in layoutMap] # No nested tuples

@@ -58,7 +58,7 @@ end
 function drawFrequencyKeyboard(filepath, genome, freqKeyMap, keyboardData; useFrequencyColorMap=false)
     kbData = keyboardData
     if useFrequencyColorMap == true
-        kbData = @set keyboardData.keyboardColorMap = computeKeyboardColorMap(freqKeyMap)
+        kbData = @set keyboardData.keyboardColorMap = computeKeyboardColorMap(freqKeyMap, Val(false))
     end
 
     drawKeyboard(genome, kbData, filepath=filepath)
