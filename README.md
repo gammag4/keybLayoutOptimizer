@@ -107,9 +107,13 @@ The results can be seen in `results/` folder.
 
 The keyboard layout I used was from the Keychron Q1 Pro keyboard.
 
-Best layout:
+Parameters: 20 keyboards and 25000 iterations.
+
+Best and worst layouts:
 
 ![Best layout](results/1.png)
+
+![Worst layout](results/worst.png)
 
 ### Analyzing results
 
