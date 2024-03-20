@@ -1,6 +1,6 @@
 # Keyboard Simulated Annealing Layout Optimizer
 
-Based on the code from this YouTube video: [Why I Made The World's Worst Keyboard](https://youtu.be/188fipF-i5I).
+Based on the code from this YouTube video: [Why I Made The World's Worst Keyboard](https://youtu.be/188fipF-i5I) (original code [here](https://github.com/AD4MANTIS/keyboards)).
 
 To train on your own custom dataset and customize keyboard layout or algorithm arguments,
 copy all your training data (text files) to the folder `persistent/raw_dataset` and
