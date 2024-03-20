@@ -1,6 +1,3 @@
-*.png
-*.txt
 data/
 persistent/*
 !persistent/data.json
-!results/*.png

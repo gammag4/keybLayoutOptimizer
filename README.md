@@ -3,14 +3,14 @@
 Based on the code from this YouTube video: [Why I Made The World's Worst Keyboard](https://youtu.be/188fipF-i5I).
 
 To train on your own custom dataset and customize keyboard layout or algorithm arguments,
-copy all your training data (text files) to the folder `persistent/raw_data` and
+copy all your training data (text files) to the folder `persistent/raw_dataset` and
 adjust parameters in `persistent/data.json` (some comments explaining it are in `data-commented.json`).
 
 You can cancel execution at any time with CTRL+C and the first and best keyboard generated up to that time will be saved.
 
-## Running
+## Customizing and training your own custom layout
 
-Download at <https://julialang.org/downloads/> and install the Julia language.
+Download and install the Julia language at <https://julialang.org/downloads/>.
 
 Assuming `julia` is in your path:
 
@@ -34,7 +34,7 @@ main(useGPU=false, findWorst=false)
 
 To find the worst keyboard layout instead of the best, just change `findWorst=false` to `findWorst=true`.
 
-## Data
+### Data
 
 Everything in `data` folder is generated, it can be deleted at any time.
 
@@ -48,7 +48,11 @@ The keyboards are saved in each folder sorted by the score of the final keyboard
 
 If you want to see the keyboard updating in realtime, set `"viewKeyboardUpdates": true` in `persistent/data.json`. Note that this impacts performance.
 
-## Adjusting penalty weights
+### Customizing parameters
+
+All parameters are in `persistent/data.json`.
+
+#### Adjusting penalty weights
 
 The weights are in `persistent/data.json` and `data-commented.json` has some comments explaining how to edit it. Some hints for adjusting them:
 
@@ -93,6 +97,8 @@ Benchmark with 10000 iterations:
 - New code (with CPU, 24 keyboards one in each thread): 362.078500s (~ 15.086604s per keyboard);
 - New code (with GPU): 8.069193s;
 - New code (with GPU, after compiled): 6.631457s;
+
+Note that there is still a lot of room for improvement.
 
 ## Training with my own data
 
