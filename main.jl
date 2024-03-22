@@ -88,6 +88,7 @@ function main(; useGPU, findWorst=false)
     (; persistentPath, rawDataPath, dataPath, lastRunsPath, finalResultsPath, startResultsPath, endResultsPath) = dataPaths
 
     # Creating folders and removing old data
+    mkpath(dataPath)
     map(i -> rm(joinpath(dataPath, "$i"), recursive=true), filter(s -> occursin(r"result", s), readdir(dataPath)))
     for path in dataPaths
         mkpath(path)
