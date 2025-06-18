@@ -9,7 +9,7 @@
     "startResultsPath": "data/result/start",
     "endResultsPath": "data/result/end"
   },
-  "keyMap": {
+  "keyMap": { // Indices always go from bottom to top and left to right
     "keys": [" ", "zxcvbnm,./", "asdfghjkl;'\n", "\tqwertyuiop[]\\", "`1234567890-="], // Rows of the keyboard layout that are actual characters
     "startIndices": [4, 12, 25, 38, 53] // Indices of keys of the first key of each row in the layout map
   },
