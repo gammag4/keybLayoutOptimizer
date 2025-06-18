@@ -1,3 +1,5 @@
+**NOTE** Not ready yet, special keys will be added to the code later
+
 ## Logging keyboard and mouse events
 
 Before you create a custom keyboard layout, you need to create a custom dataset from your own pc usage.
